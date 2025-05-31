@@ -3,54 +3,72 @@ package logger
 import (
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var Log *logrus.Logger
+var log logrus.Logger
 
-func init() {
-	logLevel := strings.ToLower(os.Getenv("LOG_LEVEL"))
+func Init(service, logLevel, filepath string) *logrus.Entry {
+	log := logrus.New()
+
+	if logLevel == "" {
+		logLevel = "info"
+	}
 	switch logLevel {
 	case "debug":
-		Log.SetLevel(logrus.DebugLevel)
+		log.SetLevel(logrus.DebugLevel)
 	case "warn":
-		Log.SetLevel(logrus.WarnLevel)
+		log.SetLevel(logrus.WarnLevel)
 	case "error":
-		Log.SetLevel(logrus.ErrorLevel)
+		log.SetLevel(logrus.ErrorLevel)
 	default:
-		Log.SetLevel(logrus.InfoLevel)
+		log.SetLevel(logrus.InfoLevel)
 	}
 
-	if os.Getenv("APP_ENV") == "production" {
-		Log.SetFormatter(&logrus.JSONFormatter{
+	appenv := os.Getenv("APP_ENV")
+	if appenv == "" {
+		appenv = "development"
+	}
+
+	if appenv == "production" {
+		log.SetFormatter(&logrus.JSONFormatter{
 			FieldMap: logrus.FieldMap{
 				logrus.FieldKeyTime:  "@timestamp",
 				logrus.FieldKeyLevel: "log.level",
 				logrus.FieldKeyMsg:   "message",
+				logrus.FieldKeyFunc:  "function",
 			},
 		})
+		log.SetOutput(
+			&lumberjack.Logger{
+				Filename:   filepath,
+				MaxSize:    100,
+				MaxBackups: 3,
+				MaxAge:     28,
+				Compress:   true,
+			},
+		)
 	} else {
-		Log.SetFormatter(&logrus.TextFormatter{
+		log.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp:   true,
 			TimestampFormat: "2006-01-02 15:04:05",
 			ForceColors:     true,
 		})
+		log.SetOutput(os.Stderr)
+	}
+	log.SetReportCaller(true)
+
+	deploementId := os.Getenv("DEPLOYMENT_ID")
+	if deploementId == "" {
+		deploementId = "default"
 	}
 
-	Log.SetOutput(os.Stdout)
-
-	Log.SetReportCaller(true)
-}
-
-func ContextLogger(service string) *logrus.Entry {
-	return Log.WithFields(logrus.Fields{
+	return log.WithFields(logrus.Fields{
 		"service":    service,
 		"go_version": runtime.Version(),
+		"deployment": deploementId,
+		"env":        appenv,
 	})
-}
-
-func GetLogger() *logrus.Logger {
-	return Log
 }
