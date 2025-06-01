@@ -3,16 +3,20 @@ package main
 import (
 	"log"
 
+	"github.com/EddyZe/foodApp/authservice/internal/config"
+	"github.com/EddyZe/foodApp/authservice/internal/server"
 	"github.com/EddyZe/foodApp/authservice/pkg"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load("./../.env"); err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	logger := pkg.InitLogger()
+	config.LoadEnv()
+	logger := pkg.InitLogger("Auth-Service[MAIN] - ")
 
-	logger.Info("Starting Auth Service...")
+	logger.Infoln("Starting Auth Service...")
+
+	serv := server.New()
+	if err := serv.ListenAndServe(); err != nil {
+		log.Fatalf("Error starting Auth Service: %v", err)
+	}
 
 }
