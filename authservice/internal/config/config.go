@@ -4,8 +4,41 @@ import (
 	"log"
 	"os"
 
+	"github.com/EddyZe/foodApp/common/config"
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
+
+var (
+	cfg AppConfig
+)
+
+type AppConfig struct {
+	Postgres *PostgresConfig
+	NewRelic *NewRelic
+	Sentry   *Sentry
+}
+
+type NewRelic struct {
+	AppName string `env:"AUTH_APP_NAME, default=go-app"`
+	License string `env:"AUTH_NEW_RELIC_LICENSE"`
+}
+
+type Sentry struct {
+	Dsn string `env:"AUTH_SENTRY_DSN"`
+}
+
+type PostgresConfig struct {
+	DbName string `env:"AUTH_DB_NAME" envDefault:"postgres"`
+	Host   string `env:"AUTH_DB_HOST" envDefault:"localhost"`
+	Port   string `env:"AUTH_DB_PORT" envDefault:"5432"`
+	User   string `env:"AUTH_DB_USER" envDefault:"postgres"`
+	Pass   string `env:"AUTH_DB_PASSWORD" envDefault:"postgres"`
+}
+
+func Config(log *logrus.Entry) *AppConfig {
+	return config.Config(log, &cfg)
+}
 
 func LoadEnv() {
 	if err := godotenv.Load("./../.env"); err != nil {

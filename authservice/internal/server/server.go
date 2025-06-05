@@ -9,6 +9,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/pkg"
 	"github.com/EddyZe/foodApp/common/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func New() *http.Server {
@@ -29,6 +30,7 @@ func New() *http.Server {
 
 	auth := handlers.NewAuthHandler()
 
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
 
 	logger.Infoln("Auth service starting. Port: ", port)

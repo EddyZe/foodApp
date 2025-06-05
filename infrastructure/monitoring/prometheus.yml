@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  #auth service
+  - job_name: "Auth-Service"
+    static_configs:
+      - targets: ['host.docker.internal:8085']

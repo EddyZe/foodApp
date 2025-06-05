@@ -58,6 +58,7 @@ func Init(service, logLevel, filepath string) *logrus.Entry {
 		})
 		log.SetOutput(os.Stderr)
 	}
+	log.AddHook(NewPrometheusHook(service))
 	log.SetReportCaller(true)
 
 	deploementId := os.Getenv("DEPLOYMENT_ID")
