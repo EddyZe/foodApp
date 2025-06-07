@@ -17,6 +17,7 @@ type AppConfig struct {
 	Postgres *PostgresConfig
 	NewRelic *NewRelic
 	Sentry   *Sentry
+	Redis    *RedisConfig
 }
 
 type NewRelic struct {
@@ -34,6 +35,14 @@ type PostgresConfig struct {
 	Port   string `env:"AUTH_DB_PORT" envDefault:"5432"`
 	User   string `env:"AUTH_DB_USER" envDefault:"postgres"`
 	Pass   string `env:"AUTH_DB_PASSWORD" envDefault:"postgres"`
+}
+
+type RedisConfig struct {
+	Host       string `env:"REDIS_HOST" envDefault:"localhost"`
+	Password   string `env:"REDIS_PASSWORD" envDefault:""`
+	Port       string `env:"REDIS_PORT" envDefault:"6379"`
+	DB         int    `env:"REDIS_DB" envDefault:"0"`
+	Expiration int    `env:"REDIS_EXPIRATION" envDefault:"5"`
 }
 
 func Config(log *logrus.Entry) *AppConfig {
