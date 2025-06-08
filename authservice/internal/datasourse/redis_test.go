@@ -22,7 +22,10 @@ func loadAppCfg() *config.AppConfig {
 func TestSave(*testing.T) {
 	cfg := loadAppCfg()
 	log.Println(cfg.Redis.Host)
-	red := NewRedis(cfg.Redis)
+	red, err := ConnectionRedis(cfg.Redis)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := red.Put("key", cfg); err != nil {
 		log.Fatal(err)
 	}
@@ -31,7 +34,10 @@ func TestSave(*testing.T) {
 func TestGet(*testing.T) {
 	cfg := loadAppCfg()
 	log.Println(cfg.Redis.Host)
-	red := NewRedis(cfg.Redis)
+	red, err := ConnectionRedis(cfg.Redis)
+	if err != nil {
+		log.Fatal(err)
+	}
 	val, err := red.Get("key")
 	if err != nil {
 		log.Fatal(err)
@@ -47,7 +53,10 @@ func TestGet(*testing.T) {
 func TestDel(*testing.T) {
 	cfg := loadAppCfg()
 	log.Println(cfg.Redis.Host)
-	red := NewRedis(cfg.Redis)
+	red, err := ConnectionRedis(cfg.Redis)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := red.Del("key"); err != nil {
 		log.Fatal(err)
 	}

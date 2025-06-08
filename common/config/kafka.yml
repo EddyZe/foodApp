@@ -1,0 +1,4 @@
+auth-service:
+  registry: 'registry'
+  login: 'login'
+

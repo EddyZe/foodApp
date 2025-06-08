@@ -11,7 +11,7 @@ import (
 
 var configOnce sync.Once
 
-func Config[T any](log *logrus.Entry, cfg T) T {
+func LoadEnvConfig[T any](log *logrus.Entry, cfg T) T {
 	configOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 		defer cancel()

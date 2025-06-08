@@ -14,8 +14,8 @@ type Redis struct {
 	cli        *redis.Client
 }
 
-func NewRedis(cfg *config.RedisConfig) *Redis {
-	return &Redis{
+func ConnectionRedis(cfg *config.RedisConfig) (*Redis, error) {
+	r := &Redis{
 		expiration: time.Duration(cfg.Expiration) * time.Minute,
 		cli: redis.NewClient(&redis.Options{
 			Addr:       fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
@@ -24,15 +24,24 @@ func NewRedis(cfg *config.RedisConfig) *Redis {
 			MaxRetries: 5,
 		}),
 	}
+	if err := r.cli.Ping().Err(); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 func (r *Redis) Put(key string, value interface{}) error {
+	return r.PutEx(key, value, r.expiration)
+}
+
+func (r *Redis) PutEx(key string, value interface{}, expiration time.Duration) error {
 	cli := r.cli
 	jsonValue, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	res := cli.Set(key, string(jsonValue), r.expiration)
+	res := cli.Set(key, string(jsonValue), expiration)
 	return res.Err()
 }
 
@@ -46,4 +55,8 @@ func (r *Redis) Del(key string) error {
 	cli := r.cli
 	res := cli.Del(key)
 	return res.Err()
+}
+
+func (r *Redis) Close() error {
+	return r.cli.Close()
 }

@@ -46,7 +46,7 @@ type RedisConfig struct {
 }
 
 func Config(log *logrus.Entry) *AppConfig {
-	return config.Config(log, &cfg)
+	return config.LoadEnvConfig(log, &cfg)
 }
 
 func LoadEnv() {
