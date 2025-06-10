@@ -5,7 +5,9 @@ import (
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
+	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/server"
+	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/pkg"
 	"github.com/sirupsen/logrus"
 )
@@ -35,8 +37,24 @@ func main() {
 		}
 	}()
 
+	//инициализация зависимостей
+	logger.Infoln("Создание репозиториев")
+	ur := repositories.NewUserRepository(postgre)
+	rr := repositories.NewRoleRepository(postgre)
+	urr := repositories.NewUserRoleRepository(postgre)
+	logger.Infoln("Репозитории созданы")
+
+	logger.Infoln("Созание сервисов")
+	us := services.NewUserService(
+		logger,
+		red,
+		rr,
+		ur,
+		urr,
+	)
+
 	//Запуск сервера
-	serv := server.New()
+	serv := server.New(us)
 	if err := serv.ListenAndServe(); err != nil {
 		log.Fatalf("Error starting Auth Service: %v", err)
 	}

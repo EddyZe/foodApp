@@ -7,7 +7,7 @@ import (
 )
 
 func PasswordHash(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MaxCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", errors.New("не удалось зашифровать пароль")
 	}
