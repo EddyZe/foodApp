@@ -45,10 +45,13 @@ func (r *Redis) PutEx(key string, value interface{}, expiration time.Duration) e
 	return res.Err()
 }
 
-func (r *Redis) Get(key string) (string, error) {
+func (r *Redis) Get(key string) (string, bool) {
 	cli := r.cli
 	res := cli.Get(key)
-	return res.Val(), res.Err()
+	if res.Err() != nil {
+		return "", false
+	}
+	return res.Val(), true
 }
 
 func (r *Redis) Del(key string) error {

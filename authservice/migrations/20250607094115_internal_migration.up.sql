@@ -4,8 +4,8 @@ create schema if not exists auth;
 create table if not exists auth.users
 (
     id         bigserial primary key,
-    email      varchar(255) not null unique,
-    password   varchar(255) not null,
+    email      varchar(256) not null unique,
+    password   varchar(256) not null,
     created_at timestamp    not null default now(),
     updated_at  timestamp    not null default now()
 );
@@ -14,7 +14,7 @@ create table if not exists auth.refresh_token
 (
     id         bigserial primary key,
     user_id    bigint references auth.users (id) on delete cascade,
-    token      varchar(255) not null unique,
+    token      varchar(256) not null unique,
     issue_at   timestamp    not null default now(),
     expired_at timestamp    not null check (expired_at > issue_at),
     is_revoke  bool                  default false
@@ -23,9 +23,10 @@ create table if not exists auth.refresh_token
 create table if not exists auth.users_ban
 (
     id         bigserial primary key,
-    user_id    bigint references auth.users (id) on delete cascade,
+    user_id    bigint references auth.users (id) on delete cascade unique ,
     is_forever bool default false,
     cause      varchar(1024),
+    created_at timestamp not null default now(),
     expired_at timestamp not null
 );
 
@@ -33,7 +34,7 @@ create table if not exists auth.email_verification_codes
 (
     id          bigserial primary key,
     user_id     bigint references auth.users (id) on delete cascade,
-    code        varchar(255) not null unique,
+    code        varchar(256) not null unique,
     is_verified bool         not null default true,
     create_at   timestamp    not null default now(),
     expired_at  timestamp    not null check (expired_at > create_at)
@@ -43,7 +44,7 @@ create table if not exists auth.reset_password_codes
 (
     id         bigserial primary key,
     user_id    bigint references auth.users (id) on delete cascade,
-    code       varchar(255) not null,
+    code       varchar(256) not null,
     is_valid   bool         not null default true,
     create_at  timestamp    not null default now(),
     expired_at timestamp    not null
@@ -52,14 +53,14 @@ create table if not exists auth.reset_password_codes
 create table if not exists auth.role
 (
     id          bigserial primary key,
-    name        varchar(255)  not null unique,
+    name        varchar(256)  not null unique,
     description varchar(1024) not null
 );
 
 create table if not exists auth.permission
 (
     id          bigserial primary key,
-    name        varchar(255)  not null unique,
+    name        varchar(256)  not null unique,
     description varchar(1024) not null
 );
 
@@ -79,7 +80,7 @@ create table if not exists auth.user_roles
 
 create table if not exists auth.black_list_token
 (
-    token      varchar(255) primary key,
+    token      varchar(256) primary key,
     expired_at timestamp not null
 );
 
@@ -87,7 +88,7 @@ create table if not exists auth.audit_log
 (
     id         bigserial primary key,
     user_id    bigint       references auth.users (id) on delete set null,
-    action     varchar(255) not null,
+    action     varchar(256) not null,
     ip_address inet,
     user_agent text,
     created_at timestamp    not null default now()
@@ -97,7 +98,7 @@ create table if not exists auth.password_history
 (
     id           bigserial primary key,
     user_id      bigint references auth.users (id) on delete cascade,
-    old_password varchar(255) not null,
+    old_password varchar(256) not null,
     changed_at   timestamp    not null default now()
 );
 

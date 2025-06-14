@@ -42,19 +42,25 @@ func main() {
 	ur := repositories.NewUserRepository(postgre)
 	rr := repositories.NewRoleRepository(postgre)
 	urr := repositories.NewUserRoleRepository(postgre)
+	br := repositories.NewBanRepository(postgre)
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
+	urs := services.NewUserRoleService(logger, red, urr)
+	rs := services.NewRoleService(logger, red, rr)
+	bs := services.NewBanService(logger, red, br)
 	us := services.NewUserService(
 		logger,
 		red,
-		rr,
+		rs,
 		ur,
-		urr,
+		urs,
 	)
 
+	ts := services.NewTokenService(appConf.Tokens, red)
+
 	//Запуск сервера
-	serv := server.New(us)
+	serv := server.New(us, ts, rs, bs)
 	if err := serv.ListenAndServe(); err != nil {
 		log.Fatalf("Error starting Auth Service: %v", err)
 	}

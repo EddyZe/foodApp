@@ -46,6 +46,25 @@ func (r *RoleRepository) FindByNameTx(ctx context.Context, tx *sqlx.Tx, name str
 	return &res, nil
 }
 
+func (r *RoleRepository) GetRoleByUserId(userId int64) []entity.Role {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var res []entity.Role
+
+	if err := r.SelectContext(
+		ctx,
+		&res,
+		`select r.* from auth.role r join auth.user_roles ur on r.id = ur.role_id
+			where ur.user_id=$1`,
+		userId,
+	); err != nil {
+		return make([]entity.Role, 0)
+	}
+
+	return res
+}
+
 func (r *RoleRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

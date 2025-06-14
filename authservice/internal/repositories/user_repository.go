@@ -83,6 +83,23 @@ func (r *UserRepository) FindByEmailTx(ctx context.Context, tx *sqlx.Tx, email s
 	return &u, nil
 }
 
+func (r *UserRepository) HasEmailExists(email string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	res := false
+
+	if err := r.QueryRowxContext(
+		ctx,
+		`select exists(select 1 from auth.users where email = $1)`,
+		email,
+	).Scan(&res); err != nil {
+		return false
+	}
+
+	return res
+}
+
 func (r *UserRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

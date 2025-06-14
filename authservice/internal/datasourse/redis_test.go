@@ -38,8 +38,8 @@ func TestGet(*testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	val, err := red.Get("key")
-	if err != nil {
+	val, ok := red.Get("key")
+	if !ok {
 		log.Fatal(err)
 	}
 	log.Println(val)

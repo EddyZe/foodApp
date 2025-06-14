@@ -18,6 +18,7 @@ type AppConfig struct {
 	NewRelic *NewRelic
 	Sentry   *Sentry
 	Redis    *RedisConfig
+	Tokens   *TokenConfig
 }
 
 type NewRelic struct {
@@ -43,6 +44,12 @@ type RedisConfig struct {
 	Port       string `env:"REDIS_PORT" envDefault:"6379"`
 	DB         int    `env:"REDIS_DB" envDefault:"0"`
 	Expiration int    `env:"REDIS_EXPIRATION" envDefault:"5"`
+}
+
+type TokenConfig struct {
+	Secret                       string `env:"JWT_SECRET" envDefault:""`
+	TokenExpirationMinute        int    `env:"TOKEN_EXPIRATION_MINUTES" envDefault:"15"`
+	RefreshTokenExpirationMinute int    `env:"REFRESH_TOKEN_EXPIRATION_MINUTES" envDefault:"36000"`
 }
 
 func Config(log *logrus.Entry) *AppConfig {

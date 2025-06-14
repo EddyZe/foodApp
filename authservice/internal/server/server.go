@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func New(us *services.UserService) *http.Server {
+func New(us *services.UserService, ts *services.TokenService, rs *services.RoleService, bs *services.BanService) *http.Server {
 	logger := pkg.InitLogger("Auth-Service [SERVER]")
 	router := gin.New()
 
@@ -29,13 +29,14 @@ func New(us *services.UserService) *http.Server {
 	router.Use(middleware.Logger(logger))
 	router.Use(gin.Recovery())
 
-	auth := handlers.NewAuthHandler(logger, us)
+	auth := handlers.NewAuthHandler(logger, us, ts, rs, bs)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
 
 	apiV1 := router.Group("/api/v1")
 	apiV1.POST("/sing-up", auth.Registry)
+	apiV1.POST("/login", auth.Login)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s
