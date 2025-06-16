@@ -37,6 +37,7 @@ func New(us *services.UserService, ts *services.TokenService, rs *services.RoleS
 	apiV1 := router.Group("/api/v1")
 	apiV1.POST("/sing-up", auth.Registry)
 	apiV1.POST("/login", auth.Login)
+	apiV1.POST("/refresh", auth.Refresh)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/util/jwtutil"
 	"net/http"
+	"strings"
 
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/pkg"
@@ -65,9 +68,14 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 		h.log.Error(err)
 	}
 
+	refreshToken, err := h.ts.GenerateRefreshToken(user.Id.Int64)
+	if err != nil {
+		h.log.Error(err)
+	}
+
 	responseutil.SuccessResponse(c, http.StatusCreated, &auth.TokensDto{
 		AccessToken:  token,
-		RefreshToken: "test",
+		RefreshToken: refreshToken.Token,
 	})
 }
 
@@ -85,42 +93,86 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	if ban, ok := h.bs.GetActiveUserBan(u.Id.Int64); ok {
-		responseutil.ErrorResponse(
-			c,
-			http.StatusForbidden,
-			"Аккаунт заблокирован",
-			ban,
-		)
+	if _, ok := h.checkBan(c, u.Id.Int64); ok {
 		return
 	}
 
 	userRoles := h.rs.GetRoleByUserId(u.Id.Int64)
 
-	rls := ""
-	for i, role := range userRoles {
-		if i != len(userRoles)-1 {
-			rls += role.Name + ","
-		} else {
-			rls += role.Name
-		}
-
-	}
-
 	token, err := h.ts.GenerateJwt(
-		map[string]interface{}{
-			"sub":  u.Id.Int64,
-			"role": rls,
-		},
+		jwtutil.GenerateClaims(u.Id.Int64, userRoles),
 	)
 	if err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, "Ошибка на стороне сервера")
 	}
 
+	refreshToken, err := h.ts.GenerateRefreshToken(u.Id.Int64)
+	if err != nil {
+		h.log.Error(err)
+	}
+
 	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
 		AccessToken:  token,
-		RefreshToken: "test",
+		RefreshToken: refreshToken.Token,
 	})
+}
 
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	token = strings.TrimSpace(token)
+
+	if token == "" {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	if !h.ts.ValidateRefreshToken(token) {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	res, err := h.ts.ReplaceRefreshToken(token)
+	if err != nil {
+		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, "ошибка на стороне сервера")
+		return
+	}
+
+	if _, ok := h.checkBan(c, res.UserId); ok {
+		return
+	}
+
+	accessToken, err := h.ts.GenerateJwt(
+		jwtutil.GenerateClaims(res.UserId, h.rs.GetRoleByUserId(res.UserId)),
+	)
+	if err != nil {
+		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
+		AccessToken:  accessToken,
+		RefreshToken: res.Token,
+	})
+}
+
+func (h *AuthHandler) checkBan(c *gin.Context, userId int64) (*entity.Ban, bool) {
+	if ban, ok := h.bs.GetActiveUserBan(userId); ok {
+		responseutil.ErrorResponse(
+			c,
+			http.StatusForbidden,
+			"Аккаунт заблокирован",
+			ban,
+		)
+		return ban, true
+	}
+	return nil, false
 }

@@ -8,8 +8,8 @@ type LoginDto struct {
 type RegisterDto struct {
 	Email     string `json:"email" binding:"required,email"`
 	Password  string `json:"password" binding:"required,min=6"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	FirstName string `json:"first_name" biding:"min=2,max=35"`
+	LastName  string `json:"last_name" binding:"max=35"`
 }
 
 type TokensDto struct {

@@ -17,3 +17,27 @@ services:
     image: grafana/grafana
     ports:
       - "3000:3000"
+
+  db:
+    container_name: postgres-foodapp
+    image: postgres
+    restart: always
+    # set shared memory limit when using docker compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    #volumes:
+    #  - type: tmpfs
+    #    target: /dev/shm
+    #    tmpfs:
+    #      size: 134217728 # 128*2^20 bytes = 128Mb
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: foodapp
+    ports:
+      - "5432:5432"
+
+  redis:
+    container_name: redis-foodapp
+    image: redis
+    ports:
+      - "6379:6379"

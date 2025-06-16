@@ -16,8 +16,10 @@ func IsValidBody(c *gin.Context, body any) bool {
 		errorMessages := ""
 		if errors.As(err, &validationErrors) {
 			errorMessages = pkg.ValidateBody(validationErrors)
+		} else {
+			errorMessages = "невалидное тело запроса"
 		}
-		responseutil.ErrorResponse(c, http.StatusUnprocessableEntity, errorMessages)
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errorMessages)
 		return false
 	}
 	return true
