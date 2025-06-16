@@ -141,7 +141,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	res, err := h.ts.ReplaceRefreshToken(token)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, "ошибка на стороне сервера")
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, "ошибка на стороне сервера")
 		return
 	}
 

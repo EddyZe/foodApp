@@ -131,6 +131,23 @@ func (r *RefreshTokenRepository) RevokeToken(token string, isRevoked bool) error
 	return nil
 }
 
+func (r *RefreshTokenRepository) Update(token *entity.RefreshToken) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	query, args, err := r.BindNamed(
+		`update auth.refresh_token set is_revoke = :is_revoke where token = :token`,
+		token,
+	)
+	if err != nil {
+		return err
+	}
+	if err := r.QueryRowxContext(ctx, query, args...).Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *RefreshTokenRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

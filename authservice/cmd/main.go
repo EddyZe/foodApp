@@ -57,11 +57,11 @@ func main() {
 		ur,
 		urs,
 	)
-
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger)
+	ms := services.NewMailService(appConf.SmptConfig)
 
 	//Запуск сервера
-	serv := server.New(us, ts, rs, bs)
+	serv := server.New(us, ts, rs, bs, ms)
 	if err := serv.ListenAndServe(); err != nil {
 		log.Fatalf("Error starting Auth Service: %v", err)
 	}

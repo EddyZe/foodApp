@@ -41,3 +41,11 @@ services:
     image: redis
     ports:
       - "6379:6379"
+
+  mail-service:
+    container_name: mail-service-foodapp
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+

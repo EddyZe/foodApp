@@ -3,8 +3,10 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
+	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/common/util/redisutil"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -139,7 +141,7 @@ func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.Refresh
 			s.log.Error("Ошибка при конвертации json refresh token redis", err)
 			t, err := s.rs.FindByTokenTx(ctx, tx, refreshToken)
 			if err != nil {
-				return nil, err
+				return nil, errors.New(errormsg.NotFound)
 			}
 			token = t
 		}
@@ -155,7 +157,7 @@ func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.Refresh
 		token, err = s.rs.FindByTokenTx(ctx, tx, refreshToken)
 		if err != nil {
 			s.log.Error("Ошибка при получении нового refresh token", err)
-			return nil, err
+			return nil, errors.New(errormsg.NotFound)
 		}
 	}
 
@@ -174,4 +176,33 @@ func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.Refresh
 	s.log.Debug("токен удален")
 	s.log.Debug("начата генерация нового токена")
 	return s.GenerateRefreshToken(token.UserId)
+}
+
+func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) error {
+	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshToken)
+	var res *entity.RefreshToken
+	if jsonData, ok := s.redis.Get(redisKey); ok {
+		if err := json.Unmarshal([]byte(jsonData), &res); err != nil {
+			s.log.Error("ошибка десириализации json refresh token", err)
+		}
+		if err := s.redis.Del(redisKey); err != nil {
+			s.log.Error("ошибка удаления из редис refresh token", err)
+		}
+	}
+	if res == nil {
+		r, err := s.rs.FindByToken(refreshTokenKeyUserId)
+		if err != nil {
+			s.log.Error("<UNK> <UNK> <UNK> refresh token", err)
+			return errors.New(errormsg.NotFound)
+		}
+		res = r
+	}
+
+	res.IsRevoke = isRevoke
+	if err := s.rs.Update(res); err != nil {
+		s.log.Error("при изменении статуса refresh token", err)
+		return err
+	}
+
+	return nil
 }

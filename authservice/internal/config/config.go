@@ -14,11 +14,12 @@ var (
 )
 
 type AppConfig struct {
-	Postgres *PostgresConfig
-	NewRelic *NewRelic
-	Sentry   *Sentry
-	Redis    *RedisConfig
-	Tokens   *TokenConfig
+	Postgres   *PostgresConfig
+	NewRelic   *NewRelic
+	Sentry     *Sentry
+	Redis      *RedisConfig
+	Tokens     *TokenConfig
+	SmptConfig *SmptConfig
 }
 
 type NewRelic struct {
@@ -50,6 +51,13 @@ type TokenConfig struct {
 	Secret                       string `env:"JWT_SECRET" envDefault:""`
 	TokenExpirationMinute        int    `env:"TOKEN_EXPIRATION_MINUTES" envDefault:"15"`
 	RefreshTokenExpirationMinute int    `env:"REFRESH_TOKEN_EXPIRATION_MINUTES" envDefault:"36000"`
+}
+
+type SmptConfig struct {
+	Host     string `env:"SMTP_HOST" envDefault:"localhost"`
+	Port     string `env:"SMTP_PORT" envDefault:"1025"`
+	Username string `env:"SMTP_USERNAME" envDefault:""`
+	Password string `env:"SMTP_PASSWORD" envDefault:""`
 }
 
 func Config(log *logrus.Entry) *AppConfig {

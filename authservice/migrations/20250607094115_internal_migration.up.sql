@@ -124,11 +124,70 @@ create or replace function auth.clean_expired_data()
     returns void as
 $$
 begin
-    delete from auth.refresh_token where expired_at < NOW();
-    delete from auth.black_list_token where expired_at < NOW();
-    delete from auth.email_verification_codes where expired_at < NOW();
-    delete from auth.reset_password_codes where expired_at < NOW();
-    delete from auth.users_ban where expired_at < NOW() and is_forever = false;
+    loop
+        delete from auth.refresh_token
+        where id in (
+            select id
+            from auth.refresh_token
+            where expired_at < NOW()
+            limit 1000
+        );
+        exit when not found;
+        commit;
+        perform pg_sleep(0.1);
+    end loop ;
+
+    loop
+        delete from auth.black_list_token
+        where token in (
+            select token
+            from auth.black_list_token
+            where expired_at < NOW()
+            limit 1000
+        );
+        exit when not found;
+        commit;
+        perform pg_sleep(0.1);
+    end loop ;
+
+    loop
+        delete from auth.email_verification_codes
+        where id in (
+            select id
+            from auth.email_verification_codes
+            where expired_at < NOW()
+            limit 1000
+        );
+        exit when not found;
+        commit;
+        perform pg_sleep(0.1);
+    end loop ;
+
+    loop
+        delete from auth.reset_password_codes
+        where id in (
+            select id
+            from auth.reset_password_codes
+            where expired_at < NOW()
+            limit 1000
+        );
+        exit when not found;
+        commit;
+        perform pg_sleep(0.1);
+    end loop ;
+
+    loop
+        delete from auth.users_ban
+        where id in (
+            select id
+            from auth.users_ban
+            where expired_at < NOW()
+            limit 1000
+        );
+        exit when not found;
+        commit;
+        perform pg_sleep(0.1);
+    end loop ;
 end;
 $$ language plpgsql;
 

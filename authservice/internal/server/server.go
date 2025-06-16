@@ -13,7 +13,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func New(us *services.UserService, ts *services.TokenService, rs *services.RoleService, bs *services.BanService) *http.Server {
+func New(
+	us *services.UserService,
+	ts *services.TokenService,
+	rs *services.RoleService,
+	bs *services.BanService,
+	ms *services.MailService,
+) *http.Server {
 	logger := pkg.InitLogger("Auth-Service [SERVER]")
 	router := gin.New()
 
