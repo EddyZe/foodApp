@@ -206,3 +206,11 @@ func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) 
 
 	return nil
 }
+
+func (s *TokenService) RemoveAllRefreshTokenUser(userid int64) error {
+	return s.RemoveAllRefreshTokenUser(userid)
+}
+
+func (s *TokenService) Secret() string {
+	return s.cfg.Secret
+}

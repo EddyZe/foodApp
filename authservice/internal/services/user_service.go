@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"time"
 
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
@@ -16,10 +17,6 @@ import (
 	"github.com/EddyZe/foodApp/common/util/redisutil"
 	"github.com/EddyZe/foodApp/common/util/roles"
 	"github.com/sirupsen/logrus"
-)
-
-const (
-	EmailAlreadyExists = "email уже занят"
 )
 
 var userEmailKeys = "users:email"
@@ -75,7 +72,7 @@ func (s *UserService) CreateUser(dto *auth.RegisterDto) (*entity.User, error) {
 
 	s.log.Debug("Поиск пользователь с таким же email: ", dto.Email)
 	if _, err := s.ur.FindByEmailTx(ctx, tx, dto.Email); err == nil {
-		return nil, errors.New(EmailAlreadyExists)
+		return nil, errors.New(errormsg.IsExists)
 	}
 
 	s.log.Debug("Сохранение пользователя")

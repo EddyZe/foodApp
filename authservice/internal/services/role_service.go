@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
@@ -64,7 +65,7 @@ func (s *RoleService) FindByNameTx(ctx context.Context, tx *sqlx.Tx, name string
 
 	role, err := s.repo.FindByNameTx(ctx, tx, name)
 	if err != nil {
-		return nil, fmt.Errorf("роль не найдена")
+		return nil, fmt.Errorf(errormsg.NotFound)
 	}
 
 	if err := s.redis.Put(redisKey, role); err != nil {

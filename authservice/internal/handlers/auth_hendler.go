@@ -2,8 +2,11 @@ package handlers
 
 import (
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/authservice/internal/util/jwtutil"
+	"github.com/EddyZe/foodApp/common/pkg/headers"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/EddyZe/foodApp/authservice/internal/services"
@@ -48,11 +51,11 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 
 	user, err := h.us.CreateUser(&registerDto)
 	if err != nil {
-		if err.Error() == services.EmailAlreadyExists {
+		if err.Error() == errormsg.IsExists {
 			responseutil.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		} else {
 			h.log.Error(err)
-			responseutil.ErrorResponse(c, http.StatusInternalServerError, "ошибка на стороне сервера")
+			responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 		}
 
 		return
@@ -89,7 +92,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	u, ok := h.us.GetByEmail(loginDto.Email)
 
 	if !ok || !pkg.CheckEqualsPassword(loginDto.Password, u.Password) {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, "неверный логин или пароль")
+		responseutil.ErrorResponse(
+			c,
+			http.StatusBadRequest,
+			errormsg.InvalidEmailOrPassword,
+		)
 		return
 	}
 
@@ -104,7 +111,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, "Ошибка на стороне сервера")
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 	}
 
 	refreshToken, err := h.ts.GenerateRefreshToken(u.Id.Int64)
@@ -141,7 +148,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	res, err := h.ts.ReplaceRefreshToken(token)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, "ошибка на стороне сервера")
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.InvalidEmailOrPassword)
 		return
 	}
 
@@ -154,7 +161,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 		return
 	}
 
@@ -162,6 +169,24 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		AccessToken:  accessToken,
 		RefreshToken: res.Token,
 	})
+}
+
+// TODO добавлять в черный список access токен
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userId, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
+	if err != nil {
+		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	if err := h.ts.RemoveAllRefreshTokenUser(userId); err != nil {
+		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) checkBan(c *gin.Context, userId int64) (*entity.Ban, bool) {

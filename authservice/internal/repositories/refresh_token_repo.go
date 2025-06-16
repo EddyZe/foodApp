@@ -148,6 +148,21 @@ func (r *RefreshTokenRepository) Update(token *entity.RefreshToken) error {
 	return nil
 }
 
+func (r *RefreshTokenRepository) RemoveAllRefreshTokensUser(userId int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := r.QueryRowxContext(
+		ctx,
+		"delete from auth.refresh_token where user_id = $1",
+		userId,
+	).Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *RefreshTokenRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }
