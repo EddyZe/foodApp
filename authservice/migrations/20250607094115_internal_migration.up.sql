@@ -7,24 +7,33 @@ create table if not exists auth.users
     email      varchar(256) not null unique,
     password   varchar(256) not null,
     created_at timestamp    not null default now(),
-    updated_at  timestamp    not null default now()
+    updated_at timestamp    not null default now()
+);
+
+create table if not exists auth.access_token
+(
+    id    bigserial primary key,
+    token varchar(256) not null unique,
+    created_at timestamp default now(),
+    expired_at timestamp not null
 );
 
 create table if not exists auth.refresh_token
 (
-    id         bigserial primary key,
-    user_id    bigint references auth.users (id) on delete cascade,
-    token      varchar(256) not null unique,
-    issue_at   timestamp    not null default now(),
-    expired_at timestamp    not null check (expired_at > issue_at),
-    is_revoke  bool                  default false
+    id              bigserial primary key,
+    user_id         bigint references auth.users (id) on delete cascade,
+    access_token_id bigint       references auth.access_token (id) on delete set null default null,
+    token           varchar(256) not null unique,
+    issue_at        timestamp    not null default now(),
+    expired_at      timestamp    not null check (expired_at > issue_at),
+    is_revoke       bool                  default false
 );
 
 create table if not exists auth.users_ban
 (
     id         bigserial primary key,
-    user_id    bigint references auth.users (id) on delete cascade unique ,
-    is_forever bool default false,
+    user_id    bigint references auth.users (id) on delete cascade unique,
+    is_forever bool               default false,
     cause      varchar(1024),
     created_at timestamp not null default now(),
     expired_at timestamp not null
@@ -115,9 +124,13 @@ create index on auth.black_list_token (expired_at);
 create index on auth.refresh_token (expired_at);
 create index on auth.black_list_token (expired_at);
 create index on auth.audit_log (created_at);
+create index on auth.access_token(token);
+create index on auth.access_token(expired_at);
 
-insert into auth.role(name, description) VALUES ('user', 'Роль обычного пользователя');
-insert into auth.role(name, description) VALUES ('admin', 'Роль администратора');
+insert into auth.role(name, description)
+VALUES ('user', 'Роль обычного пользователя');
+insert into auth.role(name, description)
+VALUES ('admin', 'Роль администратора');
 
 --шедулер
 create or replace function auth.clean_expired_data()
@@ -125,69 +138,75 @@ create or replace function auth.clean_expired_data()
 $$
 begin
     loop
-        delete from auth.refresh_token
-        where id in (
-            select id
-            from auth.refresh_token
-            where expired_at < NOW()
-            limit 1000
-        );
+        delete
+        from auth.refresh_token
+        where id in (select id
+                     from auth.refresh_token
+                     where expired_at < NOW()
+                     limit 1000);
         exit when not found;
         commit;
         perform pg_sleep(0.1);
-    end loop ;
+    end loop;
 
     loop
-        delete from auth.black_list_token
-        where token in (
-            select token
-            from auth.black_list_token
-            where expired_at < NOW()
-            limit 1000
-        );
+        delete
+        from auth.access_token
+        where token in (select token
+                        from auth.access_token
+                        where expired_at < now()
+                        limit 1000);
         exit when not found;
-        commit;
-        perform pg_sleep(0.1);
-    end loop ;
+        commit ;
+    end loop;
 
     loop
-        delete from auth.email_verification_codes
-        where id in (
-            select id
-            from auth.email_verification_codes
-            where expired_at < NOW()
-            limit 1000
-        );
+        delete
+        from auth.black_list_token
+        where token in (select token
+                        from auth.black_list_token
+                        where expired_at < NOW()
+                        limit 1000);
         exit when not found;
         commit;
         perform pg_sleep(0.1);
-    end loop ;
+    end loop;
 
     loop
-        delete from auth.reset_password_codes
-        where id in (
-            select id
-            from auth.reset_password_codes
-            where expired_at < NOW()
-            limit 1000
-        );
+        delete
+        from auth.email_verification_codes
+        where id in (select id
+                     from auth.email_verification_codes
+                     where expired_at < NOW()
+                     limit 1000);
         exit when not found;
         commit;
         perform pg_sleep(0.1);
-    end loop ;
+    end loop;
 
     loop
-        delete from auth.users_ban
-        where id in (
-            select id
-            from auth.users_ban
-            where expired_at < NOW()
-            limit 1000
-        );
+        delete
+        from auth.reset_password_codes
+        where id in (select id
+                     from auth.reset_password_codes
+                     where expired_at < NOW()
+                     limit 1000);
         exit when not found;
         commit;
         perform pg_sleep(0.1);
-    end loop ;
+    end loop;
+
+    loop
+        delete
+        from auth.users_ban
+        where id in (select id
+                     from auth.users_ban
+                     where expired_at < NOW()
+                     limit 1000);
+        exit when not found;
+        commit;
+        perform pg_sleep(0.1);
+    end loop;
 end;
 $$ language plpgsql;
 

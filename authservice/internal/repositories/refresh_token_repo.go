@@ -22,8 +22,8 @@ func (r *RefreshTokenRepository) Save(token *entity.RefreshToken) error {
 	defer cancel()
 
 	query, args, err := r.BindNamed(
-		`insert into auth.refresh_token(user_id, token, expired_at) 
-				values (:user_id, :token, :expired_at)
+		`insert into auth.refresh_token(user_id, token, expired_at, access_token_id) 
+				values (:user_id, :token, :expired_at, :access_token_id)
 				returning id`,
 		token,
 	)
@@ -40,8 +40,8 @@ func (r *RefreshTokenRepository) Save(token *entity.RefreshToken) error {
 
 func (r *RefreshTokenRepository) SaveTx(ctx context.Context, tx *sqlx.Tx, token *entity.RefreshToken) error {
 	query, args, err := tx.BindNamed(
-		`insert into auth.refresh_token(user_id, token, expired_at) 
-				values (:user_id, :token, :expired_at)
+		`insert into auth.refresh_token(user_id, token, expired_at, access_token_id) 
+				values (:user_id, :token, :expired_at, :access_token_id)
 				returning id`,
 		token,
 	)
@@ -49,7 +49,7 @@ func (r *RefreshTokenRepository) SaveTx(ctx context.Context, tx *sqlx.Tx, token 
 		return err
 	}
 
-	if err := r.QueryRowxContext(ctx, query, args...).Scan(&token.Id); err != nil {
+	if err := tx.QueryRowxContext(ctx, query, args...).Scan(&token.Id); err != nil {
 		return err
 	}
 
@@ -148,19 +148,63 @@ func (r *RefreshTokenRepository) Update(token *entity.RefreshToken) error {
 	return nil
 }
 
-func (r *RefreshTokenRepository) RemoveAllRefreshTokensUser(userId int64) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func (r *RefreshTokenRepository) RemoveAllRefreshTokensUser(userId int64) ([]entity.RefreshToken, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	if err := r.QueryRowxContext(
+	rows, err := r.QueryxContext(
 		ctx,
-		"delete from auth.refresh_token where user_id = $1",
+		"DELETE FROM auth.refresh_token rt WHERE user_id = $1 RETURNING rt.*",
 		userId,
-	).Err(); err != nil {
-		return err
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sqlx.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+
+	var tokens []entity.RefreshToken
+	for rows.Next() {
+		var token entity.RefreshToken
+		if err := rows.StructScan(&token); err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, token)
 	}
 
-	return nil
+	return tokens, rows.Err()
+}
+
+func (r *RefreshTokenRepository) RemoveAllRefreshTokensUserTx(ctx context.Context, tx *sqlx.Tx, userId int64) ([]entity.RefreshToken, error) {
+	rows, err := tx.QueryxContext(
+		ctx,
+		"DELETE FROM auth.refresh_token rt WHERE user_id = $1 RETURNING rt.*",
+		userId,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sqlx.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+
+	var tokens []entity.RefreshToken
+	for rows.Next() {
+		var token entity.RefreshToken
+		if err := rows.StructScan(&token); err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, token)
+	}
+
+	return tokens, rows.Err()
 }
 
 func (r *RefreshTokenRepository) CreateTx() (*sqlx.Tx, error) {

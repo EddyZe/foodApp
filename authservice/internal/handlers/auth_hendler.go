@@ -71,14 +71,17 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 		h.log.Error(err)
 	}
 
-	refreshToken, err := h.ts.GenerateRefreshToken(user.Id.Int64)
-	if err != nil {
+	refreshToken := h.ts.GenerateRefreshToken()
+
+	if _, _, err := h.ts.SaveRefreshAndAccessToken(user.Id.Int64, token, refreshToken); err != nil {
 		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
 	}
 
 	responseutil.SuccessResponse(c, http.StatusCreated, &auth.TokensDto{
 		AccessToken:  token,
-		RefreshToken: refreshToken.Token,
+		RefreshToken: refreshToken,
 	})
 }
 
@@ -114,14 +117,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 	}
 
-	refreshToken, err := h.ts.GenerateRefreshToken(u.Id.Int64)
-	if err != nil {
+	refreshToken := h.ts.GenerateRefreshToken()
+
+	if _, _, err := h.ts.SaveRefreshAndAccessToken(u.Id.Int64, token, refreshToken); err != nil {
 		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
 		AccessToken:  token,
-		RefreshToken: refreshToken.Token,
+		RefreshToken: refreshToken,
 	})
 }
 
@@ -145,20 +151,20 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	res, err := h.ts.ReplaceRefreshToken(token)
+	u, err := h.us.GetByRefreshToken(token)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.InvalidEmailOrPassword)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 		return
 	}
 
-	if _, ok := h.checkBan(c, res.UserId); ok {
+	if _, ok := h.checkBan(c, u.Id.Int64); ok {
 		return
 	}
 
-	accessToken, err := h.ts.GenerateJwt(
-		jwtutil.GenerateClaims(res.UserId, h.rs.GetRoleByUserId(res.UserId)),
-	)
+	userRoles := h.rs.GetRoleByUserId(u.Id.Int64)
+
+	access, refreshToken, err := h.ts.ReplaceTokens(token, jwtutil.GenerateClaims(u.Id.Int64, userRoles))
 	if err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
@@ -166,13 +172,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
-		AccessToken:  accessToken,
-		RefreshToken: res.Token,
+		AccessToken:  access.Token,
+		RefreshToken: refreshToken.Token,
 	})
 }
 
-// TODO добавлять в черный список access токен
-func (h *AuthHandler) Logout(c *gin.Context) {
+func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	userId, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
 	if err != nil {
 		h.log.Error(err)

@@ -24,14 +24,22 @@ type TokenService struct {
 	cfg   *config.TokenConfig
 	redis *datasourse.Redis
 	rs    *repositories.RefreshTokenRepository
+	ar    *repositories.AccessTokenRepository
 }
 
-func NewTokenService(cfg *config.TokenConfig, redis *datasourse.Redis, rs *repositories.RefreshTokenRepository, log *logrus.Entry) *TokenService {
+func NewTokenService(
+	cfg *config.TokenConfig,
+	redis *datasourse.Redis,
+	rs *repositories.RefreshTokenRepository,
+	log *logrus.Entry,
+	ar *repositories.AccessTokenRepository,
+) *TokenService {
 	return &TokenService{
 		log:   log,
 		cfg:   cfg,
 		redis: redis,
 		rs:    rs,
+		ar:    ar,
 	}
 }
 
@@ -57,38 +65,17 @@ func (s *TokenService) GenerateJwt(claims map[string]interface{}) (string, error
 	return tokenString, nil
 }
 
-func (s *TokenService) GenerateRefreshToken(userId int64) (*entity.RefreshToken, error) {
+func (s *TokenService) GenerateRefreshToken() string {
 	s.log.Debug("Генерация рефрешь токена")
 	refreshToken := uuid.New().String()
-	s.log.Debug("установка истечении времени токену")
-	expired := time.Now().Add(time.Duration(s.cfg.RefreshTokenExpirationMinute) * time.Minute).Unix()
-
-	tok := entity.RefreshToken{
-		UserId:    userId,
-		Token:     refreshToken,
-		ExpiredAt: time.Unix(expired, 0),
-	}
-
-	s.log.Debug("сохранение созданного токена")
-	if err := s.rs.Save(&tok); err != nil {
-		s.log.Error("ошибка при соханении рефрешь токена", err)
-		return nil, err
-	}
-
-	s.log.Debug("сохранение токена в редис")
-	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshToken)
-	if err := s.redis.Put(redisKey, tok); err != nil {
-		s.log.Error("ошибка при сохранении токена в редис", err)
-	}
-
-	return &tok, nil
+	return refreshToken
 }
 
 func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
 	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshToken)
 	jsonToken, ok := s.redis.Get(redisKey)
 	if !ok {
-		jt, err := s.rs.FindByToken(refreshTokenKeyUserId)
+		jt, err := s.rs.FindByToken(refreshToken)
 		if err != nil {
 			return false
 		}
@@ -117,10 +104,57 @@ func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
 	}
 
 	return true
-
 }
 
-func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.RefreshToken, error) {
+func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refreshToken string) (*entity.AccessToken, *entity.RefreshToken, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	tx, err := s.ar.CreateTx()
+	if err != nil {
+		s.log.Error("ошибка создания транзакции: ", err)
+		return nil, nil, err
+	}
+	expiredAccess := time.Now().Add(time.Duration(s.cfg.TokenExpirationMinute) * time.Minute)
+
+	at := entity.AccessToken{
+		Token:     accessToken,
+		ExpiredAt: expiredAccess,
+	}
+
+	if err := s.ar.SaveTx(ctx, tx, &at); err != nil {
+		s.log.Error("ошибка сохранения access token: ", err)
+		return nil, nil, err
+	}
+
+	expiredRefresh := time.Now().Add(time.Duration(s.cfg.RefreshTokenExpirationMinute) * time.Minute)
+	rt := entity.RefreshToken{
+		UserId:        userId,
+		AccessTokenId: at.Id,
+		Token:         refreshToken,
+		ExpiredAt:     expiredRefresh,
+	}
+
+	s.log.Debug("сохранение созданного токена")
+	if err := s.rs.SaveTx(ctx, tx, &rt); err != nil {
+		s.log.Error("ошибка при соханении рефрешь токена", err)
+		return nil, nil, err
+	}
+
+	if err := s.rs.CommitTx(tx); err != nil {
+		s.log.Error("ошибка при комите транщакции: ", err)
+		return nil, nil, err
+	}
+
+	s.log.Debug("сохранение токена в редис")
+	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshToken)
+	if err := s.redis.Put(redisKey, rt); err != nil {
+		s.log.Error("ошибка при сохранении токена в редис ", err)
+	}
+
+	return &at, &rt, err
+}
+
+func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]interface{}) (*entity.AccessToken, *entity.RefreshToken, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -128,7 +162,7 @@ func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.Refresh
 	tx, err := s.rs.CreateTx()
 	if err != nil {
 		s.log.Error("Ошибка при создании транзации при попытке записать новый рефреш токен: ", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	var token *entity.RefreshToken
@@ -141,7 +175,8 @@ func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.Refresh
 			s.log.Error("Ошибка при конвертации json refresh token redis", err)
 			t, err := s.rs.FindByTokenTx(ctx, tx, refreshToken)
 			if err != nil {
-				return nil, errors.New(errormsg.NotFound)
+				s.log.Error("Refresh token не найден в базе")
+				return nil, nil, errors.New(errormsg.NotFound)
 			}
 			token = t
 		}
@@ -152,30 +187,39 @@ func (s *TokenService) ReplaceRefreshToken(refreshToken string) (*entity.Refresh
 
 	s.log.Debug("Поиск в редисе завершен")
 
-	if token == nil {
-		s.log.Debug("ищем токен в БД")
-		token, err = s.rs.FindByTokenTx(ctx, tx, refreshToken)
-		if err != nil {
-			s.log.Error("Ошибка при получении нового refresh token", err)
-			return nil, errors.New(errormsg.NotFound)
-		}
+	token, err = s.rs.FindByTokenTx(ctx, tx, refreshToken)
+	if err != nil {
+		s.log.Error("refresh token не найден в базе")
+		return nil, nil, errors.New(errormsg.NotFound)
 	}
 
-	s.log.Debug("удаляем старый токе")
+	s.log.Debug("удаляем связанные access токены")
+
+	if err := s.ar.DeleteByRefreshTokenByTokenTx(ctx, tx, refreshToken); err != nil {
+		s.log.Error("ошибка при удалении access токеновт", err)
+	}
+
+	s.log.Debug("удаляем старый токен")
 	if err := s.rs.DeleteByTokenTx(ctx, tx, refreshToken); err != nil {
 		s.log.Error("Ошибка при удалении рефрешь токена", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	s.log.Debug("применяем транзакцию")
 	if err := s.rs.CommitTx(tx); err != nil {
 		s.log.Error("Ошибка при комите транзакции при замене токена: ", err)
-		return nil, err
+		return nil, nil, err
+	}
+	s.log.Debug("токены удалены")
+
+	newRefreshToken := s.GenerateRefreshToken()
+	newAccessToken, err := s.GenerateJwt(claims)
+	if err != nil {
+		s.log.Error("ошибка генерации access токена")
+		return nil, nil, err
 	}
 
-	s.log.Debug("токен удален")
-	s.log.Debug("начата генерация нового токена")
-	return s.GenerateRefreshToken(token.UserId)
+	return s.SaveRefreshAndAccessToken(token.UserId, newAccessToken, newRefreshToken)
 }
 
 func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) error {
@@ -208,7 +252,46 @@ func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) 
 }
 
 func (s *TokenService) RemoveAllRefreshTokenUser(userid int64) error {
-	return s.RemoveAllRefreshTokenUser(userid)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	tx, err := s.rs.CreateTx()
+	if err != nil {
+		s.log.Error("Ошибка при создании транзакции при удалении всех токенов: ", err)
+		return err
+	}
+	tokens, err := s.rs.RemoveAllRefreshTokensUserTx(ctx, tx, userid)
+	if err != nil {
+		s.log.Error("ошибка удаления refresh токенов: ", err)
+		return err
+	}
+
+	s.log.Info(tokens)
+
+	var ids []int64
+
+	for _, token := range tokens {
+		ids = append(ids, token.AccessTokenId.Int64)
+	}
+
+	if err := s.ar.DeleteByIdsTx(ctx, tx, ids...); err != nil {
+		s.log.Error("ошибка при удалении access токеновт", err)
+		return err
+	}
+
+	if err := s.rs.CommitTx(tx); err != nil {
+		s.log.Error("ошибка при комите транзацкии при удалении токенов: ", err)
+		return err
+	}
+
+	for _, token := range tokens {
+		rediskey := redisutil.GenerateKey(refreshTokenKeyUserId, token.Token)
+		if err := s.redis.Del(rediskey); err != nil {
+			continue
+		}
+	}
+
+	return nil
 }
 
 func (s *TokenService) Secret() string {

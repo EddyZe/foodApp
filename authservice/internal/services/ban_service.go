@@ -44,7 +44,7 @@ func (s *BanService) GetActiveUserBan(userId int64) (*entity.Ban, bool) {
 	s.log.Debug("Поиск заблокированного пользователя в БД")
 	ban, err := s.repo.FindActiveUserBans(userId)
 	if err != nil {
-		s.log.Error("Ошибка при поиске пользователя в базе: ", err)
+		s.log.Debug("пользователь не найден с баном: ", err)
 		return nil, false
 	}
 

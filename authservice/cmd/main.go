@@ -43,6 +43,7 @@ func main() {
 	rr := repositories.NewRoleRepository(postgre)
 	urr := repositories.NewUserRoleRepository(postgre)
 	br := repositories.NewBanRepository(postgre)
+	ar := repositories.NewAccessTokenRepository(postgre)
 	trr := repositories.NewRefreshTokenRepository(postgre)
 	logger.Infoln("Репозитории созданы")
 
@@ -57,7 +58,7 @@ func main() {
 		ur,
 		urs,
 	)
-	ts := services.NewTokenService(appConf.Tokens, red, trr, logger)
+	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
 	ms := services.NewMailService(appConf.SmptConfig)
 
 	//Запуск сервера

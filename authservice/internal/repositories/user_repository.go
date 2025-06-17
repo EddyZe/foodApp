@@ -100,6 +100,26 @@ func (r *UserRepository) HasEmailExists(email string) bool {
 	return res
 }
 
+func (r *UserRepository) FindByRefreshToken(refreshToken string) (*entity.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	var u entity.User
+
+	if err := r.GetContext(
+		ctx,
+		&u,
+		`select u.* from auth.users u 
+    	join auth.refresh_token rt on u.id = rt.user_id
+    	where rt.token=$1`,
+		refreshToken,
+	); err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
+
 func (r *UserRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

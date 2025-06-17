@@ -12,6 +12,7 @@ drop table if exists auth.role cascade;
 drop table if exists auth.reset_password_codes cascade;
 drop table if exists auth.email_verification_codes cascade;
 drop table if exists auth.users_ban cascade;
+drop table if exists auth.refresh_token cascade ;
 drop table if exists auth.refresh_token cascade;
 drop table if exists auth.users cascade;
 

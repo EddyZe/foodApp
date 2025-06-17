@@ -141,3 +141,26 @@ func (s *UserService) GetByEmail(email string) (*entity.User, bool) {
 	}
 	return u, true
 }
+
+func (s *UserService) GetByRefreshToken(refreshToken string) (*entity.User, error) {
+	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshToken)
+
+	if jsonDataUser, ok := s.redis.Get(redisKey); ok {
+		var res entity.User
+		if err := json.Unmarshal([]byte(jsonDataUser), &res); err == nil {
+			return &res, nil
+		}
+	}
+
+	u, err := s.ur.FindByRefreshToken(refreshToken)
+	if err != nil {
+		s.log.Errorf("пользователь с таким токеном не найден: %v", err)
+		return nil, errors.New(errormsg.NotFound)
+	}
+
+	if err := s.redis.Put(redisKey, u); err != nil {
+		s.log.Errorf("ошибка при сохранении в редис: %v", err)
+	}
+
+	return u, nil
+}

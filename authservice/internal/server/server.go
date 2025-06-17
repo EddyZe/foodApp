@@ -44,7 +44,7 @@ func New(
 	apiV1.POST("/sing-up", auth.Registry)
 	apiV1.POST("/login", auth.Login)
 	apiV1.POST("/refresh", auth.Refresh)
-	apiV1.POST("/logout", auth.Logout)
+	apiV1.POST("/logout-all", auth.LogoutAll)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s
