@@ -64,6 +64,18 @@ func (r *AccessTokenRepository) DeleteByIdsTx(ctx context.Context, tx *sqlx.Tx, 
 	return nil
 }
 
+func (r *AccessTokenRepository) DeleteByTokenTx(ctx context.Context, tx *sqlx.Tx, token string) error {
+	if err := tx.QueryRowxContext(
+		ctx,
+		`delete from auth.access_token where token=$1`,
+		token,
+	).Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *AccessTokenRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

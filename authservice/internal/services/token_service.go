@@ -251,7 +251,48 @@ func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) 
 	return nil
 }
 
-func (s *TokenService) RemoveAllRefreshTokenUser(userid int64) error {
+func (s *TokenService) Logout(accessToken string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	tx, err := s.rs.CreateTx()
+	if err != nil {
+		s.log.Error("Ошибка при открытии транзакции: ", err)
+		return err
+	}
+
+	refreshtoken, err := s.rs.RemoveByAccessTokenTx(
+		ctx,
+		tx,
+		accessToken,
+	)
+	if err != nil {
+		s.log.Debug("токен не найден refresh token: ", err)
+		return err
+	}
+
+	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshtoken)
+	if err := s.redis.Del(redisKey); err != nil {
+		s.log.Error("ошибка удаления refresh token из redis", err)
+	}
+
+	if err := s.ar.DeleteByTokenTx(
+		ctx,
+		tx,
+		accessToken,
+	); err != nil {
+		s.log.Debug("токен не найден access token: ", err)
+		return err
+	}
+
+	if err := s.ar.CommitTx(tx); err != nil {
+		s.log.Error("ошибка при комите транзакции во время удаления токенов: ", err)
+		return err
+	}
+	return nil
+}
+
+func (s *TokenService) LogoutAll(userid int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
@@ -272,6 +313,10 @@ func (s *TokenService) RemoveAllRefreshTokenUser(userid int64) error {
 
 	for _, token := range tokens {
 		ids = append(ids, token.AccessTokenId.Int64)
+		redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, token.Token)
+		if err := s.redis.Del(redisKey); err != nil {
+			continue
+		}
 	}
 
 	if err := s.ar.DeleteByIdsTx(ctx, tx, ids...); err != nil {
@@ -282,13 +327,6 @@ func (s *TokenService) RemoveAllRefreshTokenUser(userid int64) error {
 	if err := s.rs.CommitTx(tx); err != nil {
 		s.log.Error("ошибка при комите транзацкии при удалении токенов: ", err)
 		return err
-	}
-
-	for _, token := range tokens {
-		rediskey := redisutil.GenerateKey(refreshTokenKeyUserId, token.Token)
-		if err := s.redis.Del(rediskey); err != nil {
-			continue
-		}
 	}
 
 	return nil

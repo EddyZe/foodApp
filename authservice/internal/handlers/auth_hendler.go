@@ -177,6 +177,29 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) Logout(c *gin.Context) {
+	_, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
+	if err != nil {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	token := c.GetHeader("Authorization")
+	if token == "" || !strings.HasPrefix(token, "Bearer ") {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	token = strings.TrimPrefix(token, "Bearer ")
+
+	if err := h.ts.Logout(token); err != nil {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, nil)
+}
+
 func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	userId, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
 	if err != nil {
@@ -185,7 +208,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 		return
 	}
 
-	if err := h.ts.RemoveAllRefreshTokenUser(userId); err != nil {
+	if err := h.ts.LogoutAll(userId); err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 		return
