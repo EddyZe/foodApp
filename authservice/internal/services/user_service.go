@@ -162,3 +162,25 @@ func (s *UserService) GetByRefreshToken(refreshToken string) (*entity.User, erro
 
 	return u, nil
 }
+
+func (s *UserService) GetById(id int64) (*entity.User, error) {
+	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(id))
+	if jsonDataUser, ok := s.redis.Get(redisKey); ok {
+		var res entity.User
+		if err := json.Unmarshal([]byte(jsonDataUser), &res); err == nil {
+			return &res, nil
+		}
+	}
+
+	u, err := s.ur.FindById(id)
+	if err != nil {
+		s.log.Debugf("пользователь с таким id не найден: %v", err)
+		return nil, errors.New(errormsg.NotFound)
+	}
+
+	if err := s.redis.Put(redisKey, u); err != nil {
+		s.log.Errorf("ошибка при созранении в редис пользователя: %v", err)
+	}
+
+	return u, nil
+}

@@ -1,0 +1,5 @@
+[SendVerifiedCodeSubject]
+other = "Подтверждение почты"
+
+[SendVerifiedCodeBody]
+other = "Отправьте данный код для подтверждения почты: {{.code}}"

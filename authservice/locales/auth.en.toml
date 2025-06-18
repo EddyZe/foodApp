@@ -1,0 +1,5 @@
+[SendVerifiedCodeSubject]
+other = "Confirm Your Email"
+
+[SendVerifiedCodeBody]
+other = "Please use this code to confirm your email: {{.code}}"

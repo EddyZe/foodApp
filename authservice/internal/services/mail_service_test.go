@@ -2,7 +2,7 @@ package services
 
 import (
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/authservice/internal/models"
+	"github.com/sirupsen/logrus"
 	"testing"
 )
 
@@ -12,8 +12,9 @@ func TestMailService(t *testing.T) {
 		Port: "1025",
 	}
 
-	mailServ := NewMailService(&cfg)
-	err := mailServ.SendMail(models.NewMailMessage("test2@mail", "test", "test bodty", "test@mail"))
+	mailServ := NewMailService(logrus.NewEntry(logrus.New()), &cfg)
+
+	err := mailServ.SendMail("test2@mail", "test", "test bodty", "test@mail")
 
 	if err != nil {
 		t.Error(err)

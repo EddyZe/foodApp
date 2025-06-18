@@ -5,4 +5,7 @@ const (
 	IsExists               = "IS_ALREADY_EXISTS"
 	InvalidEmailOrPassword = "INVALID_EMAIL_OR_PASSWORD"
 	ServerInternalError    = "SERVER_INTERNAL_ERROR"
+	Unauthorized           = "UNAUTHORIZED"
+	Forbidden              = "FORBIDDEN"
+	AccountIsBlocked       = "ACCOUNT_IS_BLOCKED"
 )

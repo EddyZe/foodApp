@@ -6,6 +6,7 @@ create table if not exists auth.users
     id         bigserial primary key,
     email      varchar(256) not null unique,
     password   varchar(256) not null,
+    email_is_confirm bool default false,
     created_at timestamp    not null default now(),
     updated_at timestamp    not null default now()
 );

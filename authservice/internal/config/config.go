@@ -14,12 +14,14 @@ var (
 )
 
 type AppConfig struct {
-	Postgres   *PostgresConfig
-	NewRelic   *NewRelic
-	Sentry     *Sentry
-	Redis      *RedisConfig
-	Tokens     *TokenConfig
-	SmptConfig *SmptConfig
+	Postgres          *PostgresConfig
+	NewRelic          *NewRelic
+	Sentry            *Sentry
+	Redis             *RedisConfig
+	Tokens            *TokenConfig
+	SmptConfig        *SmptConfig
+	EmailVerification *EmailVerificationCfg
+	ResetPassword     *ResetPasswordVerificationCfg
 }
 
 type NewRelic struct {
@@ -58,14 +60,23 @@ type SmptConfig struct {
 	Port     string `env:"SMTP_PORT" envDefault:"1025"`
 	Username string `env:"SMTP_USERNAME" envDefault:""`
 	Password string `env:"SMTP_PASSWORD" envDefault:""`
+	From     string `env:"SMTP_FROM" envDefault:"test@test.com"`
+}
+
+type EmailVerificationCfg struct {
+	CodeExpiredMinute int `env:"EMAIL_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"20"`
+}
+
+type ResetPasswordVerificationCfg struct {
+	CodeExpiredMinute int `env:"RESET_PASSWORD_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"10"`
 }
 
 func Config(log *logrus.Entry) *AppConfig {
 	return config.LoadEnvConfig(log, &cfg)
 }
 
-func LoadEnv() {
-	if err := godotenv.Load("./../.env"); err != nil {
+func LoadEnv(path string) {
+	if err := godotenv.Load(path); err != nil {
 		log.Println("Error loading .env file")
 	}
 }

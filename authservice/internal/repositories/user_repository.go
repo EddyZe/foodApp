@@ -120,6 +120,22 @@ func (r *UserRepository) FindByRefreshToken(refreshToken string) (*entity.User, 
 	return &u, nil
 }
 
+func (r *UserRepository) FindById(id int64) (*entity.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	var u entity.User
+	if err := r.GetContext(
+		ctx,
+		&u,
+		`select * from auth.users where id = $1`,
+		id,
+	); err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
+
 func (r *UserRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

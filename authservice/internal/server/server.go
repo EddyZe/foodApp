@@ -19,6 +19,8 @@ func New(
 	rs *services.RoleService,
 	bs *services.BanService,
 	ms *services.MailService,
+	mvs *services.EmailVerificationCodeService,
+	lms *services.LocalizeService,
 ) *http.Server {
 	logger := pkg.InitLogger("Auth-Service [SERVER]")
 	router := gin.New()
@@ -35,7 +37,7 @@ func New(
 	router.Use(middleware.Logger(logger))
 	router.Use(gin.Recovery())
 
-	auth := handlers.NewAuthHandler(logger, us, ts, rs, bs)
+	auth := handlers.NewAuthHandler(logger, us, ts, rs, bs, ms, mvs, lms)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
@@ -46,6 +48,7 @@ func New(
 	apiV1.POST("/refresh", auth.Refresh)
 	apiV1.POST("/logout-all", auth.LogoutAll)
 	apiV1.POST("/logout", auth.Logout)
+	apiV1.POST("/email-code", auth.SendMailConfirmCode)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

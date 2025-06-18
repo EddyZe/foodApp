@@ -37,6 +37,24 @@ func (r *EmailVerificationCodeRepository) Save(code *entity.EmailVerificationCod
 	return nil
 }
 
+func (r *EmailVerificationCodeRepository) SaveTx(ctx context.Context, tx *sqlx.Tx, code *entity.EmailVerificationCode) error {
+	query, args, err := tx.BindNamed(
+		`insert into auth.email_verification_codes (code, user_id, expired_at) 
+		values (:code, :user_id, :expired_at)
+		returning id;`,
+		code,
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.QueryRowxContext(ctx, query, args...).Scan(&code.Id); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *EmailVerificationCodeRepository) FindByCode(codeString string) (*entity.EmailVerificationCode, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -44,6 +62,22 @@ func (r *EmailVerificationCodeRepository) FindByCode(codeString string) (*entity
 	var code entity.EmailVerificationCode
 
 	if err := r.GetContext(
+		ctx,
+		&code,
+		`select * from auth.email_verification_codes where code=$1`,
+		codeString,
+	); err != nil {
+		return nil, err
+	}
+
+	return &code, nil
+}
+
+func (r *EmailVerificationCodeRepository) FindByCodeTx(ctx context.Context, tx *sqlx.Tx, codeString string) (*entity.EmailVerificationCode, error) {
+
+	var code entity.EmailVerificationCode
+
+	if err := tx.GetContext(
 		ctx,
 		&code,
 		`select * from auth.email_verification_codes where code=$1`,

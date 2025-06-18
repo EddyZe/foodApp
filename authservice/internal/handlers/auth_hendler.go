@@ -4,6 +4,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/authservice/internal/util/jwtutil"
+	"github.com/EddyZe/foodApp/authservice/internal/util/localizeids"
 	"github.com/EddyZe/foodApp/common/pkg/headers"
 	"net/http"
 	"strconv"
@@ -20,21 +21,35 @@ import (
 )
 
 type AuthHandler struct {
-	us  *services.UserService
-	ts  *services.TokenService
-	rs  *services.RoleService
-	log *logrus.Entry
-	bs  *services.BanService
+	us           *services.UserService
+	ts           *services.TokenService
+	rs           *services.RoleService
+	log          *logrus.Entry
+	bs           *services.BanService
+	sendMailServ *services.MailService
+	mvs          *services.EmailVerificationCodeService
+	lms          *services.LocalizeService
 }
 
-func NewAuthHandler(log *logrus.Entry, us *services.UserService, ts *services.TokenService,
-	rs *services.RoleService, bs *services.BanService) *AuthHandler {
+func NewAuthHandler(
+	log *logrus.Entry,
+	us *services.UserService,
+	ts *services.TokenService,
+	rs *services.RoleService,
+	bs *services.BanService,
+	sendMailServ *services.MailService,
+	mvs *services.EmailVerificationCodeService,
+	lms *services.LocalizeService,
+) *AuthHandler {
 	return &AuthHandler{
-		us:  us,
-		log: log,
-		ts:  ts,
-		rs:  rs,
-		bs:  bs,
+		us:           us,
+		log:          log,
+		ts:           ts,
+		rs:           rs,
+		bs:           bs,
+		sendMailServ: sendMailServ,
+		mvs:          mvs,
+		lms:          lms,
 	}
 }
 
@@ -134,7 +149,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
@@ -142,19 +157,19 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	token = strings.TrimSpace(token)
 
 	if token == "" {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
 	if !h.ts.ValidateRefreshToken(token) {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
 	u, err := h.us.GetByRefreshToken(token)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
@@ -180,20 +195,20 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	_, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
 	token := c.GetHeader("Authorization")
 	if token == "" || !strings.HasPrefix(token, "Bearer ") {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
 	token = strings.TrimPrefix(token, "Bearer ")
 
 	if err := h.ts.Logout(token); err != nil {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
@@ -204,7 +219,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	userId, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
 		return
 	}
 
@@ -217,12 +232,75 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	responseutil.SuccessResponse(c, http.StatusOK, nil)
 }
 
+func (h *AuthHandler) SendMailConfirmCode(c *gin.Context) {
+	lang := c.GetHeader("Accept-Language")
+	userId, err := strconv.ParseInt(c.GetHeader(headers.XAuthenticationUserHeader), 10, 64)
+	if err != nil {
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		return
+	}
+
+	u, err := h.us.GetById(userId)
+	if err != nil {
+		if err.Error() == errormsg.NotFound {
+			responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+			return
+		}
+
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	code, err := h.mvs.GenerateAndSaveCode(u.Id.Int64, 8)
+	if err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	body, err := h.lms.GetMessage(
+		localizeids.SendVerifiedCodeBody,
+		lang,
+		"Send this is code: ",
+		map[string]interface{}{
+			"code": code,
+		},
+	)
+	if err != nil {
+		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	subject, err := h.lms.GetMessage(
+		localizeids.SendVerifiedCodeSubject,
+		lang,
+		"Confirm Your Email",
+		nil,
+	)
+	if err != nil {
+		h.log.Error(err)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	if err := h.sendMailServ.SendMailFromApp(
+		subject,
+		body,
+		u.Email,
+	); err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, nil)
+}
+
 func (h *AuthHandler) checkBan(c *gin.Context, userId int64) (*entity.Ban, bool) {
 	if ban, ok := h.bs.GetActiveUserBan(userId); ok {
 		responseutil.ErrorResponse(
 			c,
 			http.StatusForbidden,
-			"Аккаунт заблокирован",
+			errormsg.AccountIsBlocked,
 			ban,
 		)
 		return ban, true

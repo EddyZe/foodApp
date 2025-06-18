@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
@@ -13,7 +14,13 @@ import (
 )
 
 func main() {
-	config.LoadEnv()
+	envPath := "./../.env"
+	args := os.Args
+	if len(args) >= 2 {
+		envPath = args[1]
+	}
+
+	config.LoadEnv(envPath)
 	logger := pkg.InitLogger("Auth-Service[MAIN] - ")
 
 	logger.Infoln("Starting Auth Service...")
@@ -45,6 +52,7 @@ func main() {
 	br := repositories.NewBanRepository(postgre)
 	ar := repositories.NewAccessTokenRepository(postgre)
 	trr := repositories.NewRefreshTokenRepository(postgre)
+	evr := repositories.NewEmailVerificationCodeRepository(postgre)
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
@@ -57,10 +65,16 @@ func main() {
 		ur,
 	)
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
-	ms := services.NewMailService(appConf.SmptConfig)
+	ms := services.NewMailService(logger, appConf.SmptConfig)
+	mvs := services.NewEmailVerificationCodeService(logger, appConf.EmailVerification, evr)
+	lms, err := services.NewLocalizeService(logger, "./locales")
+	if err != nil {
+		logger.Errorf("ошибка создания сервиса локализации: %v", err)
+		return
+	}
 
 	//Запуск сервера
-	serv := server.New(us, ts, rs, bs, ms)
+	serv := server.New(us, ts, rs, bs, ms, mvs, lms)
 	if err := serv.ListenAndServe(); err != nil {
 		log.Fatalf("Error starting Auth Service: %v", err)
 	}
