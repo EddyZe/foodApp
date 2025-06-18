@@ -21,13 +21,13 @@ import (
 
 var userEmailKeys = "users:email"
 var userIdKeys = "users:id"
+var userRefreshToken = "user:refresh:token"
 
 type UserService struct {
 	log   *logrus.Entry
 	redis *datasourse.Redis
 	rs    *RoleService
 	ur    *repositories.UserRepository
-	urs   *UserRoleService
 }
 
 func NewUserService(
@@ -35,13 +35,11 @@ func NewUserService(
 	redis *datasourse.Redis,
 	rs *RoleService,
 	ur *repositories.UserRepository,
-	urs *UserRoleService,
 ) *UserService {
 	return &UserService{
 		log:   log,
 		redis: redis,
 		rs:    rs,
-		urs:   urs,
 		ur:    ur,
 	}
 }
@@ -89,7 +87,7 @@ func (s *UserService) CreateUser(dto *auth.RegisterDto) (*entity.User, error) {
 	}
 
 	s.log.Debug("Установка роли пользователю: ", dto.Email)
-	if err := s.urs.SetRoleTx(ctx, tx, newUser.Id, role.Id); err != nil {
+	if err := s.rs.SetRoleTx(ctx, tx, newUser.Id, role.Id); err != nil {
 		s.log.Errorf("Ошибка при установки роли пользователю: %v", err)
 		return nil, errors.New(fmt.Sprintf("%v: %v", errormessages.Save, err))
 	}
@@ -143,7 +141,7 @@ func (s *UserService) GetByEmail(email string) (*entity.User, bool) {
 }
 
 func (s *UserService) GetByRefreshToken(refreshToken string) (*entity.User, error) {
-	redisKey := redisutil.GenerateKey(refreshTokenKeyUserId, refreshToken)
+	redisKey := redisutil.GenerateKey(userRefreshToken, refreshToken)
 
 	if jsonDataUser, ok := s.redis.Get(redisKey); ok {
 		var res entity.User

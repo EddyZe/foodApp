@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
@@ -11,23 +10,18 @@ import (
 	"time"
 )
 
-var emailCodesKey = "email:code:"
-
 type EmailVerificationCodeService struct {
-	log   *logrus.Entry
-	redis *datasourse.Redis
-	evr   *repositories.EmailVerificationCodeRepository
+	log *logrus.Entry
+	evr *repositories.EmailVerificationCodeRepository
 }
 
 func NewEmailVerificationCodeService(
 	log *logrus.Entry,
-	redis *datasourse.Redis,
 	evr *repositories.EmailVerificationCodeRepository,
 ) *EmailVerificationCodeService {
 	return &EmailVerificationCodeService{
-		log:   log,
-		redis: redis,
-		evr:   evr,
+		log: log,
+		evr: evr,
 	}
 }
 
@@ -60,7 +54,7 @@ func (s *EmailVerificationCodeService) GetByCode(code string) (*entity.EmailVeri
 
 func (s *EmailVerificationCodeService) GenerateRandomCode(length int) string {
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	chars := "1234567890-QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
+	chars := "1234567890QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm"
 
 	b := make([]byte, length)
 	for i := range b {

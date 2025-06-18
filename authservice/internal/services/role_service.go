@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
@@ -14,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var rolesUserEmail = "roles:user:email"
 var rolesUserid = "roles:user:id"
 var roleName = "roles:name"
 
@@ -22,13 +22,15 @@ type RoleService struct {
 	log   *logrus.Entry
 	redis *datasourse.Redis
 	repo  *repositories.RoleRepository
+	urr   *repositories.UserRoleRepository
 }
 
-func NewRoleService(log *logrus.Entry, redis *datasourse.Redis, repo *repositories.RoleRepository) *RoleService {
+func NewRoleService(log *logrus.Entry, redis *datasourse.Redis, repo *repositories.RoleRepository, urr *repositories.UserRoleRepository) *RoleService {
 	return &RoleService{
 		log:   log,
 		redis: redis,
 		repo:  repo,
+		urr:   urr,
 	}
 }
 
@@ -73,4 +75,36 @@ func (s *RoleService) FindByNameTx(ctx context.Context, tx *sqlx.Tx, name string
 	}
 
 	return role, nil
+}
+
+func (s *RoleService) SetRole(userId, roleId sql.NullInt64) error {
+	s.log.Debug("Установка роли")
+	if err := s.redis.Del(redisutil.GenerateKey(rolesUserid, fmt.Sprint(userId.Int64))); err != nil {
+		s.log.Errorf("ошибка удаления ключа: %v", err)
+	}
+	if err := s.urr.SetUserRole(entity.UserRole{
+		UserId: userId,
+		RoleId: roleId,
+	}); err != nil {
+		s.log.Errorf("Ошибка при установки роли: %v", err)
+		return err
+	}
+	s.log.Debug("Роль установлена")
+	return nil
+}
+
+func (s *RoleService) SetRoleTx(ctx context.Context, tx *sqlx.Tx, userId, roleId sql.NullInt64) error {
+	s.log.Debug("Установка роли")
+	if err := s.redis.Del(redisutil.GenerateKey(rolesUserid, fmt.Sprint(userId.Int64))); err != nil {
+		s.log.Errorf("ошибка удаления ключа: %v", err)
+	}
+	if err := s.urr.SetUserRoleTx(ctx, tx, &entity.UserRole{
+		UserId: userId,
+		RoleId: roleId,
+	}); err != nil {
+		s.log.Errorf("Ошибка при установки роли: %v", err)
+		return err
+	}
+	s.log.Debug("Роль установлена")
+	return nil
 }

@@ -70,6 +70,21 @@ func (r *EmailVerificationCodeRepository) DeleteByCode(codeString string) error 
 	return nil
 }
 
+func (r *EmailVerificationCodeRepository) SetVerified(status bool, codeString string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := r.QueryRowxContext(
+		ctx,
+		`update auth.email_verification_codes set is_verified=$1 where code=$2`,
+		status,
+		codeString,
+	).Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *EmailVerificationCodeRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

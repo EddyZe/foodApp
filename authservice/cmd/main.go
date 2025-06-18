@@ -48,15 +48,13 @@ func main() {
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
-	urs := services.NewUserRoleService(logger, red, urr)
-	rs := services.NewRoleService(logger, red, rr)
-	bs := services.NewBanService(logger, red, br)
+	rs := services.NewRoleService(logger, red, rr, urr)
+	bs := services.NewBanService(logger, br)
 	us := services.NewUserService(
 		logger,
 		red,
 		rs,
 		ur,
-		urs,
 	)
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
 	ms := services.NewMailService(appConf.SmptConfig)
