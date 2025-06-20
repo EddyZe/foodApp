@@ -13,9 +13,9 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/pkg"
 	"github.com/EddyZe/foodApp/common/dto/auth"
+	"github.com/EddyZe/foodApp/common/pkg/redisutil"
+	"github.com/EddyZe/foodApp/common/pkg/roles"
 	"github.com/EddyZe/foodApp/common/util/errormessages"
-	"github.com/EddyZe/foodApp/common/util/redisutil"
-	"github.com/EddyZe/foodApp/common/util/roles"
 	"github.com/sirupsen/logrus"
 )
 
@@ -183,4 +183,25 @@ func (s *UserService) GetById(id int64) (*entity.User, error) {
 	}
 
 	return u, nil
+}
+
+func (s *UserService) SetEmailConfirmed(userId int64, b bool) (*entity.User, error) {
+	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(userId))
+	if _, ok := s.redis.Get(redisKey); ok {
+		if err := s.redis.Del(redisKey); err != nil {
+			s.log.Errorf("Ошибка удаления из редис пользователя: %v", err)
+		}
+	}
+
+	updateUser, err := s.ur.SetEmailIsConfirm(userId, b)
+	if err != nil {
+		s.log.Errorf("ошибка при обновлении статуса подтверждения email: %v", err)
+		return nil, err
+	}
+
+	if err := s.redis.Put(redisKey, updateUser); err != nil {
+		s.log.Errorf("ошибка при сохранении в redis при изменении статуса email: %v", err)
+	}
+
+	return updateUser, nil
 }

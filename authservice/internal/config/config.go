@@ -22,6 +22,8 @@ type AppConfig struct {
 	SmptConfig        *SmptConfig
 	EmailVerification *EmailVerificationCfg
 	ResetPassword     *ResetPasswordVerificationCfg
+	AppInfo           *AppInfo
+	LocalizerConfig   *LocalizerConfig
 }
 
 type NewRelic struct {
@@ -63,8 +65,18 @@ type SmptConfig struct {
 	From     string `env:"SMTP_FROM" envDefault:"test@test.com"`
 }
 
+type AppInfo struct {
+	AppName     string `env:"APP_NAME" envDefault:"foodApp"`
+	AppUrl      string `env:"APP_URL" envDefault:"http://localhost:8085"`
+	SupportLink string `env:"APP_SUPPORT_LINK" envDefault:"support"`
+}
+
+type LocalizerConfig struct {
+	DirFiles string `env:"AUTH_LOCALIZER_DIR_FILES" envDefault:"./locales"`
+}
+
 type EmailVerificationCfg struct {
-	CodeExpiredMinute int `env:"EMAIL_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"20"`
+	CodeExpiredMinute int `env:"EMAIL_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"15"`
 }
 
 type ResetPasswordVerificationCfg struct {
@@ -75,8 +87,8 @@ func Config(log *logrus.Entry) *AppConfig {
 	return config.LoadEnvConfig(log, &cfg)
 }
 
-func LoadEnv(path string) {
-	if err := godotenv.Load(path); err != nil {
+func LoadEnv() {
+	if err := godotenv.Load("./../.env"); err != nil {
 		log.Println("Error loading .env file")
 	}
 }

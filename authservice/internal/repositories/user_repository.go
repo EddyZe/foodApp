@@ -136,6 +136,25 @@ func (r *UserRepository) FindById(id int64) (*entity.User, error) {
 	return &u, nil
 }
 
+func (r *UserRepository) SetEmailIsConfirm(userId int64, b bool) (*entity.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	var user entity.User
+
+	if err := r.GetContext(
+		ctx,
+		&user,
+		`update auth.users set email_is_confirm = $1 where id = $2 returning *`,
+		b,
+		userId,
+	); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func (r *UserRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

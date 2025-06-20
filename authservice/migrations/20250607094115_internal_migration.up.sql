@@ -46,8 +46,8 @@ create table if not exists auth.email_verification_codes
     user_id     bigint references auth.users (id) on delete cascade,
     code        varchar(256) not null unique,
     is_verified bool         not null default true,
-    create_at   timestamp    not null default now(),
-    expired_at  timestamp    not null check (expired_at > create_at)
+    created_at   timestamp    not null default now(),
+    expired_at  timestamp    not null check (expired_at > created_at)
 );
 
 create table if not exists auth.reset_password_codes

@@ -68,7 +68,7 @@ func (s *EmailVerificationCodeService) GenerateAndSaveCode(userId int64, lengthC
 	tx, err := s.evr.CreateTx()
 	if err != nil {
 		s.log.Error("Ошибка открытия транзакции при генерации кода для подтверждения email: ", err)
-		return "", errors.New(errormsg.ServerInternalError)
+		return "", err
 	}
 
 	var code string
@@ -102,4 +102,17 @@ func (s *EmailVerificationCodeService) GenerateAndSaveCode(userId int64, lengthC
 	}
 
 	return code, nil
+}
+
+func (s *EmailVerificationCodeService) FindCode(code string) (*entity.EmailVerificationCode, bool) {
+	res, err := s.evr.FindByCode(code)
+	if err != nil {
+		s.log.Debug("код не был найден: ", err)
+		return nil, false
+	}
+	return res, true
+}
+
+func (s *EmailVerificationCodeService) SetVerified(codeString string, b bool) error {
+	return s.evr.SetVerified(codeString, b)
 }

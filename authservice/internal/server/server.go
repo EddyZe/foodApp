@@ -1,6 +1,7 @@
 package server
 
 import (
+	services2 "github.com/EddyZe/foodApp/common/services/localizer"
 	"net/http"
 	"time"
 
@@ -20,7 +21,8 @@ func New(
 	bs *services.BanService,
 	ms *services.MailService,
 	mvs *services.EmailVerificationCodeService,
-	lms *services.LocalizeService,
+	lms *services2.LocalizeService,
+	appInfo *config.AppInfo,
 ) *http.Server {
 	logger := pkg.InitLogger("Auth-Service [SERVER]")
 	router := gin.New()
@@ -37,7 +39,7 @@ func New(
 	router.Use(middleware.Logger(logger))
 	router.Use(gin.Recovery())
 
-	auth := handlers.NewAuthHandler(logger, us, ts, rs, bs, ms, mvs, lms)
+	auth := handlers.NewAuthHandler(logger, us, ts, rs, bs, ms, mvs, lms, appInfo)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
@@ -46,9 +48,10 @@ func New(
 	apiV1.POST("/sing-up", auth.Registry)
 	apiV1.POST("/login", auth.Login)
 	apiV1.POST("/refresh", auth.Refresh)
-	apiV1.POST("/logout-all", auth.LogoutAll)
-	apiV1.POST("/logout", auth.Logout)
-	apiV1.POST("/email-code", auth.SendMailConfirmCode)
+	apiV1.POST("/logout-all", middleware.JwtFilter(ts.Secret()), auth.LogoutAll)
+	apiV1.POST("/logout", middleware.JwtFilter(ts.Secret()), auth.Logout)
+	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), auth.SendMailConfirmCode)
+	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), auth.ConfirmMail)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

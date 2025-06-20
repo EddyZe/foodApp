@@ -2,30 +2,60 @@ package pkg
 
 import (
 	"fmt"
-
+	"github.com/EddyZe/foodApp/common/services/localizer"
 	"github.com/go-playground/validator/v10"
 )
 
-func ValidateBody(validationErrors validator.ValidationErrors) string {
+func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer.LocalizeService, lang string) string {
 	errorMessages := ""
 	for _, fieldError := range validationErrors {
 		switch fieldError.Tag() {
 		case "required":
-			errorMessages += fmt.Sprintf("Поле '%s' обязательно, ", fieldError.Field())
+			msg := ls.GetMessage(
+				localizer.FieldRequired,
+				lang,
+				fmt.Sprintf("Field %s required", fieldError.Field()),
+				map[string]interface{}{
+					"field": fieldError.Field(),
+				},
+			)
+
+			errorMessages += msg + "; "
 		case "email":
-			errorMessages += fmt.Sprintf("Некорректный email в поле '%s', ", fieldError.Field())
+			msg := ls.GetMessage(
+				localizer.FieldEmail,
+				lang,
+				fmt.Sprintf("Invalid email in field %s", fieldError.Field()),
+				map[string]interface{}{
+					"field": fieldError.Field(),
+				},
+			)
+
+			errorMessages += msg
 		case "min":
-			errorMessages += fmt.Sprintf(
-				"Поле '%s' должно быть не короче %s символов, ",
-				fieldError.Field(),
-				fieldError.Param(),
+			msg := ls.GetMessage(
+				localizer.FieldMin,
+				lang,
+				fmt.Sprintf("Field %s must be at least %s characters long", fieldError.Field(), fieldError.Param()),
+				map[string]interface{}{
+					"field": fieldError.Field(),
+					"param": fieldError.Param(),
+				},
 			)
+
+			errorMessages += msg + "; "
 		default:
-			errorMessages = fmt.Sprintf(
-				"Ошибка в поле '%s' (правило: %s)",
-				fieldError.Field(),
-				fieldError.Tag(),
+			msg := ls.GetMessage(
+				localizer.FieldDefault,
+				lang,
+				fmt.Sprintf("An error in the field %s. Rule: %s", fieldError.Field(), fieldError.Tag()),
+				map[string]interface{}{
+					"field": fieldError.Field(),
+					"rule":  fieldError.Tag(),
+				},
 			)
+
+			errorMessages += msg + "; "
 		}
 	}
 

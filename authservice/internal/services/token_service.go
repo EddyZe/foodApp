@@ -7,7 +7,10 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
-	"github.com/EddyZe/foodApp/common/util/redisutil"
+	"github.com/EddyZe/foodApp/authservice/internal/util/stringutils"
+	"github.com/EddyZe/foodApp/common/models"
+	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
+	"github.com/EddyZe/foodApp/common/pkg/redisutil"
 	"github.com/sirupsen/logrus"
 	"time"
 
@@ -65,8 +68,25 @@ func (s *TokenService) GenerateJwt(claims map[string]interface{}) (string, error
 	return tokenString, nil
 }
 
-func (s *TokenService) GenerateRefreshToken() string {
-	s.log.Debug("Генерация рефрешь токена")
+func (s *TokenService) GenerateJwtByUser(u *entity.User, roles []entity.Role) (string, error) {
+	token, err := s.GenerateJwt(
+		jwtutil.GenerateClaims(&models.JwtClaims{
+			Email:         u.Email,
+			EmailVerified: u.EmailIsConfirm,
+			Role:          stringutils.RoleMapString(roles),
+			Sub:           u.Id.Int64,
+		}),
+	)
+	if err != nil {
+		s.log.Error(err)
+		return "", err
+	}
+
+	return token, nil
+}
+
+func (s *TokenService) GenerateUUID() string {
+	s.log.Debug("Генерация токена")
 	refreshToken := uuid.New().String()
 	return refreshToken
 }
@@ -217,7 +237,7 @@ func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]inte
 	}
 	s.log.Debug("токены удалены")
 
-	newRefreshToken := s.GenerateRefreshToken()
+	newRefreshToken := s.GenerateUUID()
 	newAccessToken, err := s.GenerateJwt(claims)
 	if err != nil {
 		s.log.Error("ошибка генерации access токена")

@@ -2,25 +2,31 @@ package validate
 
 import (
 	"errors"
-	"net/http"
-
 	"github.com/EddyZe/foodApp/authservice/pkg"
-	"github.com/EddyZe/foodApp/common/pkg/responseutil"
+	"github.com/EddyZe/foodApp/common/services/localizer"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
-func IsValidBody(c *gin.Context, body any) bool {
+func IsValidBody(c *gin.Context, body any, ls *localizer.LocalizeService) (string, bool) {
+	lang := c.GetHeader("Accept-language")
+	if lang == "" {
+		lang = "en"
+	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		var validationErrors validator.ValidationErrors
 		errorMessages := ""
 		if errors.As(err, &validationErrors) {
-			errorMessages = pkg.ValidateBody(validationErrors)
+			errorMessages = pkg.ValidateBody(validationErrors, ls, lang)
 		} else {
-			errorMessages = "невалидное тело запроса"
+			errorMessages = ls.GetMessage(
+				localizer.InvalidBody,
+				lang,
+				"Invalid body",
+				nil,
+			)
 		}
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errorMessages)
-		return false
+		return errorMessages, false
 	}
-	return true
+	return "", true
 }

@@ -34,14 +34,18 @@ func NewMailService(log *logrus.Entry, cfg *config.SmptConfig) *MailService {
 }
 
 func (s *MailService) SendMail(from, subject, body string, to ...string) error {
-	sub := fmt.Sprintf("Subject: %v \n\n", subject)
-	body = fmt.Sprintf("%v\n\n", body)
+	headers := ""
+	headers += fmt.Sprintf("Subject: %s\r\n", subject)
+	headers += "MIME-Version: 1.0\r\n"
+	headers += "Content-Type: text/html; charset=\"UTF-8\"\r\n"
+	headers += "\r\n"
+	msg := headers + body
 	if err := smtp.SendMail(
 		fmt.Sprintf("%s:%s", s.Host, s.Port),
 		s.Auth,
 		from,
 		to,
-		[]byte(fmt.Sprint(sub, body)),
+		[]byte(msg),
 	); err != nil {
 		s.log.Error("SMTP Send Mail Error ошибка при отпавке email:", err)
 		return err

@@ -13,3 +13,7 @@ type EmailVerificationCode struct {
 	CreatedAt  time.Time     `db:"created_at" json:"created_at"`
 	ExpiredAt  time.Time     `db:"expired_at" json:"expired_at"`
 }
+
+func (e EmailVerificationCode) IsExpired() bool {
+	return e.ExpiredAt.Unix() < time.Now().Unix()
+}

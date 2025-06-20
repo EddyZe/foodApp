@@ -10,7 +10,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
 	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
-	"github.com/EddyZe/foodApp/common/util/redisutil"
+	"github.com/EddyZe/foodApp/common/pkg/redisutil"
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )

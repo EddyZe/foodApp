@@ -104,14 +104,14 @@ func (r *EmailVerificationCodeRepository) DeleteByCode(codeString string) error 
 	return nil
 }
 
-func (r *EmailVerificationCodeRepository) SetVerified(status bool, codeString string) error {
+func (r *EmailVerificationCodeRepository) SetVerified(codeString string, b bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := r.QueryRowxContext(
 		ctx,
 		`update auth.email_verification_codes set is_verified=$1 where code=$2`,
-		status,
+		b,
 		codeString,
 	).Err(); err != nil {
 		return err

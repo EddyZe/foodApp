@@ -1,7 +1,6 @@
-package services
+package localizer
 
 import (
-	"errors"
 	"github.com/BurntSushi/toml"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/sirupsen/logrus"
@@ -16,14 +15,14 @@ type LocalizeService struct {
 	bundle *i18n.Bundle
 }
 
-func NewLocalizeService(log *logrus.Entry, localizeDir string) (*LocalizeService, error) {
+func NewLocalizeService(log *logrus.Entry, localizeDir string) *LocalizeService {
 
 	bundle := i18n.NewBundle(language.Russian)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 
 	files, err := os.ReadDir(localizeDir)
 	if err != nil {
-		return nil, errors.New("директория по такому пути не найдена: " + err.Error())
+		log.Debug("Директория с переводами не найдена. Будут применены стандартные сообщения!")
 	}
 
 	for _, f := range files {
@@ -37,14 +36,14 @@ func NewLocalizeService(log *logrus.Entry, localizeDir string) (*LocalizeService
 	return &LocalizeService{
 		log:    log,
 		bundle: bundle,
-	}, nil
+	}
 }
 
 // GetMessage находит переыод сообщения
 func (s *LocalizeService) GetMessage(
 	idTranslate, lang, defaultMessage string,
 	templateData map[string]interface{},
-) (string, error) {
+) string {
 	localizer := i18n.NewLocalizer(s.bundle, lang)
 	res, err := localizer.Localize(&i18n.LocalizeConfig{
 		DefaultMessage: &i18n.Message{
@@ -55,8 +54,9 @@ func (s *LocalizeService) GetMessage(
 	})
 
 	if err != nil {
-		return "", errors.New("ошибка при локализации сообщения: " + err.Error())
+		s.log.Error("ошибка при локализации сообщения: ", err)
+		return defaultMessage
 	}
 
-	return res, nil
+	return res
 }

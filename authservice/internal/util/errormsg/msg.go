@@ -8,4 +8,6 @@ const (
 	Unauthorized           = "UNAUTHORIZED"
 	Forbidden              = "FORBIDDEN"
 	AccountIsBlocked       = "ACCOUNT_IS_BLOCKED"
+	InvalidBody            = "INVALID_BODY"
+	InvalidEmailCode       = "INVALID_EMAIL_CODE"
 )

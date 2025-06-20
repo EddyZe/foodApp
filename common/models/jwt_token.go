@@ -1,9 +1,10 @@
 package models
 
-type JwtToken struct {
-	Ext   int64
-	Iat   int64
-	Role  []string
-	Sub   int64
-	Token string
+type JwtClaims struct {
+	Ext           int64
+	Iat           int64
+	Email         string
+	EmailVerified bool
+	Role          []string
+	Sub           int64
 }
