@@ -381,17 +381,16 @@ func (h *AuthHandler) ConfirmEmailByUrl(c *gin.Context) {
 		return
 	}
 
-	if updateUser.EmailIsConfirm {
-		h.responseEmailConfirmed(c, lang)
-		return
-	}
-
-	if err := h.mvs.SetVerifiedCode(codeString, false); err != nil {
+	if err := h.mvs.Delete(codeString); err != nil {
 		h.log.Error(err)
-	}
-
-	if err := h.mvs.SetIsActiveToken(tokenString, true); err != nil {
-		h.log.Error(err)
+		code.IsVerified = false
+		if err := h.mvs.SetVerifiedCode(code.Code, code.IsVerified); err != nil {
+			h.log.Error(err)
+		}
+		token.IsActive = false
+		if err := h.mvs.SetIsActiveToken(tokenString, token.IsActive); err != nil {
+			h.log.Error(err)
+		}
 	}
 
 	userRoles := h.rs.GetRoleByUserId(updateUser.Id.Int64)
@@ -462,10 +461,15 @@ func (h *AuthHandler) ConfirmMail(c *gin.Context) {
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 		return
 	}
-	code.IsVerified = false
-	if err := h.mvs.SetVerifiedCode(code.Code, code.IsVerified); err != nil {
-		h.log.Error("ошибка при замене статуса email code: ", err)
+
+	if err := h.mvs.Delete(code.Code); err != nil {
+		h.log.Error(err)
+		code.IsVerified = false
+		if err := h.mvs.SetVerifiedCode(code.Code, code.IsVerified); err != nil {
+			h.log.Error("ошибка при замене статуса email code: ", err)
+		}
 	}
+
 	if err := h.ts.Logout(token); err != nil {
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 		return
