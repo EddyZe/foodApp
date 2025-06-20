@@ -21,7 +21,6 @@ import (
 
 var userEmailKeys = "users:email"
 var userIdKeys = "users:id"
-var userRefreshToken = "user:refresh:token"
 
 type UserService struct {
 	log   *logrus.Entry
@@ -98,13 +97,7 @@ func (s *UserService) CreateUser(dto *auth.RegisterDto) (*entity.User, error) {
 		return nil, errors.New(fmt.Sprintf("%s: %v", errormessages.CommitTx, err))
 	}
 
-	if err := s.redis.Put(redisutil.GenerateKey(userEmailKeys, newUser.Email), newUser); err != nil {
-		s.log.Errorf("ошибка записи в редис: %v", err)
-	}
-
-	if err := s.redis.Put(redisutil.GenerateKey(userIdKeys, fmt.Sprint(newUser.Id.Int64)), newUser); err != nil {
-		s.log.Errorf("ошибка записи в редис: %v", err)
-	}
+	s.updateCache(&newUser)
 
 	return &newUser, nil
 }
@@ -134,30 +127,15 @@ func (s *UserService) GetByEmail(email string) (*entity.User, bool) {
 		return nil, false
 	}
 
-	if err := s.redis.Put(redisKey, u); err != nil {
-		s.log.Errorf("ошибка записи в редис: %v", err)
-	}
+	s.updateCache(u)
 	return u, true
 }
 
 func (s *UserService) GetByRefreshToken(refreshToken string) (*entity.User, error) {
-	redisKey := redisutil.GenerateKey(userRefreshToken, refreshToken)
-
-	if jsonDataUser, ok := s.redis.Get(redisKey); ok {
-		var res entity.User
-		if err := json.Unmarshal([]byte(jsonDataUser), &res); err == nil {
-			return &res, nil
-		}
-	}
-
 	u, err := s.ur.FindByRefreshToken(refreshToken)
 	if err != nil {
 		s.log.Errorf("пользователь с таким токеном не найден: %v", err)
 		return nil, errors.New(errormsg.NotFound)
-	}
-
-	if err := s.redis.Put(redisKey, u); err != nil {
-		s.log.Errorf("ошибка при сохранении в редис: %v", err)
 	}
 
 	return u, nil
@@ -186,22 +164,42 @@ func (s *UserService) GetById(id int64) (*entity.User, error) {
 }
 
 func (s *UserService) SetEmailConfirmed(userId int64, b bool) (*entity.User, error) {
-	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(userId))
-	if _, ok := s.redis.Get(redisKey); ok {
-		if err := s.redis.Del(redisKey); err != nil {
-			s.log.Errorf("Ошибка удаления из редис пользователя: %v", err)
-		}
-	}
-
 	updateUser, err := s.ur.SetEmailIsConfirm(userId, b)
 	if err != nil {
 		s.log.Errorf("ошибка при обновлении статуса подтверждения email: %v", err)
 		return nil, err
 	}
 
-	if err := s.redis.Put(redisKey, updateUser); err != nil {
+	s.removeCache(updateUser)
+	s.updateCache(updateUser)
+
+	return updateUser, nil
+}
+
+func (s *UserService) updateCache(u *entity.User) {
+	rediskey2 := redisutil.GenerateKey(userEmailKeys, u.Email)
+	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(u.Id.Int64))
+	if err := s.redis.Put(redisKey, u); err != nil {
 		s.log.Errorf("ошибка при сохранении в redis при изменении статуса email: %v", err)
 	}
 
-	return updateUser, nil
+	if err := s.redis.Put(rediskey2, u); err != nil {
+		s.log.Errorf("ошибка при сохранении в redis при изменении статуса email: %v", err)
+	}
+}
+
+func (s *UserService) removeCache(u *entity.User) {
+	rediskey2 := redisutil.GenerateKey(userEmailKeys, u.Email)
+	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(u.Id.Int64))
+	if _, ok := s.redis.Get(redisKey); ok {
+		if err := s.redis.Del(redisKey); err != nil {
+			s.log.Debugf("%v ключ не удален из редис: %v", redisKey, err)
+		}
+	}
+
+	if _, ok := s.redis.Get(rediskey2); ok {
+		if err := s.redis.Del(rediskey2); err != nil {
+			s.log.Debugf("%v ключ не удален из редис: %v", rediskey2, err)
+		}
+	}
 }

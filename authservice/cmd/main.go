@@ -46,6 +46,7 @@ func main() {
 	ar := repositories.NewAccessTokenRepository(postgre)
 	trr := repositories.NewRefreshTokenRepository(postgre)
 	evr := repositories.NewEmailVerificationCodeRepository(postgre)
+	evtr := repositories.NewEmailVerificationTokenRepository(postgre)
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
@@ -59,7 +60,7 @@ func main() {
 	)
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
 	ms := services.NewMailService(logger, appConf.SmptConfig)
-	mvs := services.NewEmailVerificationCodeService(logger, appConf.EmailVerification, evr)
+	mvs := services.NewEmailVerificationCodeService(logger, appConf.EmailVerification, evr, evtr)
 	lms := localizer.NewLocalizeService(logger, appConf.LocalizerConfig.DirFiles)
 	logger.Infoln("Создане сервисов завершено")
 

@@ -119,6 +119,28 @@ func (r *EmailVerificationCodeRepository) SetVerified(codeString string, b bool)
 	return nil
 }
 
+func (r *EmailVerificationCodeRepository) FindCodeByVerifiedToken(token string) (*entity.EmailVerificationCode, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var res entity.EmailVerificationCode
+
+	if err := r.GetContext(
+		ctx,
+		&res,
+		`select c.* 
+	from auth.email_verification_codes c
+    join auth.email_verification_token t
+        on t.code_id=c.id 
+	where t.token = $1`,
+		token,
+	); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (r *EmailVerificationCodeRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

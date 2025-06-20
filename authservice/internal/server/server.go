@@ -20,7 +20,7 @@ func New(
 	rs *services.RoleService,
 	bs *services.BanService,
 	ms *services.MailService,
-	mvs *services.EmailVerificationCodeService,
+	mvs *services.EmailVerificationService,
 	lms *services2.LocalizeService,
 	appInfo *config.AppInfo,
 ) *http.Server {
@@ -52,6 +52,7 @@ func New(
 	apiV1.POST("/logout", middleware.JwtFilter(ts.Secret()), auth.Logout)
 	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), auth.SendMailConfirmCode)
 	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), auth.ConfirmMail)
+	apiV1.GET("confirm-email-url", auth.ConfirmEmailByUrl)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

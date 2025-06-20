@@ -172,3 +172,6 @@ other = "The account is blocked. The end of the blocking: {{.banExpired}}"
 
 [AccountBanForover]
 other = "forever"
+
+[EmailConfirm]
+other = "Email is confirmed"

@@ -174,3 +174,6 @@ other = "Аккаунт заблокирован. Скрок истечения 
 
 [AccountBanForever]
 other = "навсегда"
+
+[EmailConfirm]
+other = "Email уже подтвержден."

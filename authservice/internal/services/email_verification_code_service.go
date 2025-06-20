@@ -13,25 +13,28 @@ import (
 	"time"
 )
 
-type EmailVerificationCodeService struct {
-	log *logrus.Entry
-	cfg *config.EmailVerificationCfg
-	evr *repositories.EmailVerificationCodeRepository
+type EmailVerificationService struct {
+	log  *logrus.Entry
+	cfg  *config.EmailVerificationCfg
+	evr  *repositories.EmailVerificationCodeRepository
+	evtr *repositories.EmailVerificationTokenRepository
 }
 
 func NewEmailVerificationCodeService(
 	log *logrus.Entry,
 	cfg *config.EmailVerificationCfg,
 	evr *repositories.EmailVerificationCodeRepository,
-) *EmailVerificationCodeService {
-	return &EmailVerificationCodeService{
-		log: log,
-		cfg: cfg,
-		evr: evr,
+	evtr *repositories.EmailVerificationTokenRepository,
+) *EmailVerificationService {
+	return &EmailVerificationService{
+		log:  log,
+		cfg:  cfg,
+		evr:  evr,
+		evtr: evtr,
 	}
 }
 
-func (s *EmailVerificationCodeService) Save(code *entity.EmailVerificationCode) error {
+func (s *EmailVerificationService) Save(code *entity.EmailVerificationCode) error {
 	c := code.Code
 	if c, _ := s.evr.FindByCode(c); c != nil {
 		return errors.New(errormsg.IsExists)
@@ -44,11 +47,11 @@ func (s *EmailVerificationCodeService) Save(code *entity.EmailVerificationCode) 
 	return nil
 }
 
-func (s *EmailVerificationCodeService) Delete(code string) error {
+func (s *EmailVerificationService) Delete(code string) error {
 	return s.evr.DeleteByCode(code)
 }
 
-func (s *EmailVerificationCodeService) GetByCode(code string) (*entity.EmailVerificationCode, error) {
+func (s *EmailVerificationService) GetByCode(code string) (*entity.EmailVerificationCode, error) {
 	res, err := s.evr.FindByCode(code)
 	if err != nil {
 		s.log.Error(err)
@@ -58,20 +61,21 @@ func (s *EmailVerificationCodeService) GetByCode(code string) (*entity.EmailVeri
 	return res, nil
 }
 
-func (s *EmailVerificationCodeService) GenerateRandomCode(length int) string {
+func (s *EmailVerificationService) GenerateRandomCode(length int) string {
 	return codegen.GenerateRandomCode(length)
 }
 
-func (s *EmailVerificationCodeService) GenerateAndSaveCode(userId int64, lengthCode int) (string, error) {
+func (s *EmailVerificationService) GenerateAndSaveCode(userId int64, lengthCode int) (*entity.EmailVerificationCode, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	tx, err := s.evr.CreateTx()
 	if err != nil {
 		s.log.Error("Ошибка открытия транзакции при генерации кода для подтверждения email: ", err)
-		return "", err
+		return nil, err
 	}
 
 	var code string
+	var codeEntity entity.EmailVerificationCode
 
 	for {
 		code = codegen.GenerateRandomCode(lengthCode)
@@ -81,7 +85,7 @@ func (s *EmailVerificationCodeService) GenerateAndSaveCode(userId int64, lengthC
 
 		ex := time.Now().Add(time.Duration(s.cfg.CodeExpiredMinute) * time.Minute)
 
-		codeEntity := entity.EmailVerificationCode{
+		codeEntity = entity.EmailVerificationCode{
 			Id:        sql.NullInt64{},
 			UserId:    userId,
 			Code:      code,
@@ -98,13 +102,49 @@ func (s *EmailVerificationCodeService) GenerateAndSaveCode(userId int64, lengthC
 
 	if err := s.evr.CommitTx(tx); err != nil {
 		s.log.Error("ошибка при комите транзакции при генерации и сохранени email code: ", err)
-		return "", errors.New(errormsg.ServerInternalError)
+		return nil, errors.New(errormsg.ServerInternalError)
 	}
 
-	return code, nil
+	return &codeEntity, nil
 }
 
-func (s *EmailVerificationCodeService) FindCode(code string) (*entity.EmailVerificationCode, bool) {
+func (s *EmailVerificationService) GetByEmailVerifToken(token string) (*entity.EmailVerificationCode, bool) {
+	code, err := s.evr.FindCodeByVerifiedToken(token)
+	if err != nil {
+		s.log.Debugf("код по токену %v не найден: %v", token, err)
+		return nil, false
+	}
+
+	return code, true
+}
+
+func (s *EmailVerificationService) SaveVerificationToken(codeId int64, token string) error {
+	expired := time.Now().Add(time.Duration(s.cfg.CodeExpiredMinute) * time.Minute)
+	tok := &entity.EmailVerificationToken{
+		Id:        0,
+		Token:     token,
+		CodeId:    codeId,
+		ExpiredAt: expired,
+	}
+
+	return s.evtr.Save(tok)
+}
+
+func (s *EmailVerificationService) SetIsActiveToken(token string, isActive bool) error {
+	return s.evtr.SetIsActive(token, isActive)
+}
+
+func (s *EmailVerificationService) GetToken(token string) (*entity.EmailVerificationToken, bool) {
+	res, err := s.evtr.FindToken(token)
+	if err != nil {
+		s.log.Debugf("токен не %s найден: %v ", token, err)
+		return nil, false
+	}
+
+	return res, true
+}
+
+func (s *EmailVerificationService) FindCode(code string) (*entity.EmailVerificationCode, bool) {
 	res, err := s.evr.FindByCode(code)
 	if err != nil {
 		s.log.Debug("код не был найден: ", err)
@@ -113,6 +153,6 @@ func (s *EmailVerificationCodeService) FindCode(code string) (*entity.EmailVerif
 	return res, true
 }
 
-func (s *EmailVerificationCodeService) SetVerified(codeString string, b bool) error {
+func (s *EmailVerificationService) SetVerifiedCode(codeString string, b bool) error {
 	return s.evr.SetVerified(codeString, b)
 }

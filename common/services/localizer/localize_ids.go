@@ -12,4 +12,5 @@ const (
 	InvalidBody             = "InvalidBody"
 	AccountIsBlocked        = "AccountIsBlocked"
 	AccountBanForever       = "AccountBanForever"
+	EmailConfirm            = "EmailConfirm"
 )
