@@ -2,18 +2,18 @@ package repositories
 
 import (
 	"context"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/postgre"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"time"
 
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/jmoiron/sqlx"
 )
 
 type UserRepository struct {
-	*datasourse.PostgresDb
+	*postgre.PostgresDb
 }
 
-func NewUserRepository(db *datasourse.PostgresDb) *UserRepository {
+func NewUserRepository(db *postgre.PostgresDb) *UserRepository {
 	return &UserRepository{
 		db,
 	}

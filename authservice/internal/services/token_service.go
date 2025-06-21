@@ -4,18 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/redis"
+	entity2 "github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/authservice/internal/util/stringutils"
-	"github.com/EddyZe/foodApp/common/models"
+	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
 	"github.com/EddyZe/foodApp/common/pkg/redisutil"
 	"github.com/sirupsen/logrus"
 	"time"
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -25,14 +25,14 @@ var refreshTokenUser = "refresh:token:user"
 type TokenService struct {
 	log   *logrus.Entry
 	cfg   *config.TokenConfig
-	redis *datasourse.Redis
+	redis *redis.Redis
 	rs    *repositories.RefreshTokenRepository
 	ar    *repositories.AccessTokenRepository
 }
 
 func NewTokenService(
 	cfg *config.TokenConfig,
-	redis *datasourse.Redis,
+	redis *redis.Redis,
 	rs *repositories.RefreshTokenRepository,
 	log *logrus.Entry,
 	ar *repositories.AccessTokenRepository,
@@ -68,7 +68,7 @@ func (s *TokenService) GenerateJwt(claims map[string]interface{}) (string, error
 	return tokenString, nil
 }
 
-func (s *TokenService) GenerateJwtByUser(u *entity.User, roles []entity.Role) (string, error) {
+func (s *TokenService) GenerateJwtByUser(u *entity2.User, roles []entity2.Role) (string, error) {
 	token, err := s.GenerateJwt(
 		jwtutil.GenerateClaims(&models.JwtClaims{
 			Email:         u.Email,
@@ -114,7 +114,7 @@ func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
 
 	}
 
-	var res entity.RefreshToken
+	var res entity2.RefreshToken
 	if err := json.Unmarshal([]byte(jsonToken), &res); err != nil {
 		s.log.Error("ошибка при преобразовании json refresh token", err)
 		return false
@@ -128,7 +128,7 @@ func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
 	return true
 }
 
-func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refreshToken string) (*entity.AccessToken, *entity.RefreshToken, error) {
+func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refreshToken string) (*entity2.AccessToken, *entity2.RefreshToken, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	tx, err := s.ar.CreateTx()
@@ -138,7 +138,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	}
 	expiredAccess := time.Now().Add(time.Duration(s.cfg.TokenExpirationMinute) * time.Minute)
 
-	at := entity.AccessToken{
+	at := entity2.AccessToken{
 		Token:     accessToken,
 		ExpiredAt: expiredAccess,
 	}
@@ -149,7 +149,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	}
 
 	expiredRefresh := time.Now().Add(time.Duration(s.cfg.RefreshTokenExpirationMinute) * time.Minute)
-	rt := entity.RefreshToken{
+	rt := entity2.RefreshToken{
 		UserId:        userId,
 		AccessTokenId: at.Id,
 		Token:         refreshToken,
@@ -179,7 +179,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	return &at, &rt, err
 }
 
-func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]interface{}) (*entity.AccessToken, *entity.RefreshToken, error) {
+func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]interface{}) (*entity2.AccessToken, *entity2.RefreshToken, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -190,7 +190,7 @@ func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]inte
 		return nil, nil, err
 	}
 
-	var token *entity.RefreshToken
+	var token *entity2.RefreshToken
 
 	rediskey := redisutil.GenerateKey(refreshTokenUser, refreshToken)
 
@@ -249,7 +249,7 @@ func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]inte
 
 func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) error {
 	redisKey := redisutil.GenerateKey(refreshTokenUser, refreshToken)
-	var res *entity.RefreshToken
+	var res *entity2.RefreshToken
 	if jsonData, ok := s.redis.Get(redisKey); ok {
 		if err := json.Unmarshal([]byte(jsonData), &res); err != nil {
 			s.log.Error("ошибка десириализации json refresh token", err)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/EddyZe/foodApp/common/config"
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -44,11 +43,11 @@ type PostgresConfig struct {
 }
 
 type RedisConfig struct {
-	Host       string `env:"REDIS_HOST" envDefault:"localhost"`
-	Password   string `env:"REDIS_PASSWORD" envDefault:""`
-	Port       string `env:"REDIS_PORT" envDefault:"6379"`
-	DB         int    `env:"REDIS_DB" envDefault:"0"`
-	Expiration int    `env:"REDIS_EXPIRATION" envDefault:"5"`
+	Host       string `env:"AUTH_REDIS_HOST" envDefault:"localhost"`
+	Password   string `env:"AUTH_REDIS_PASSWORD" envDefault:""`
+	Port       string `env:"AUTH_REDIS_PORT" envDefault:"6379"`
+	DB         int    `env:"AUTH_REDIS_DB" envDefault:"0"`
+	Expiration int    `env:"AUTH_REDIS_EXPIRATION" envDefault:"5"`
 }
 
 type TokenConfig struct {
@@ -83,12 +82,12 @@ type ResetPasswordVerificationCfg struct {
 	CodeExpiredMinute int `env:"RESET_PASSWORD_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"10"`
 }
 
-func Config(log *logrus.Entry) *AppConfig {
-	return config.LoadEnvConfig(log, &cfg)
+func Config() *AppConfig {
+	return config.LoadEnvConfig(&cfg)
 }
 
-func LoadEnv() {
-	if err := godotenv.Load("./../.env"); err != nil {
+func LoadEnv(envPath string) {
+	if err := godotenv.Load(envPath); err != nil {
 		log.Println("Error loading .env file")
 	}
 }

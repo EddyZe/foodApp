@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/redis"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/dto"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
+	"github.com/EddyZe/foodApp/authservice/internal/util/passencoder"
 	"time"
 
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
-	"github.com/EddyZe/foodApp/authservice/pkg"
-	"github.com/EddyZe/foodApp/common/dto/auth"
 	"github.com/EddyZe/foodApp/common/pkg/redisutil"
 	"github.com/EddyZe/foodApp/common/pkg/roles"
-	"github.com/EddyZe/foodApp/common/util/errormessages"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,14 +23,14 @@ var userIdKeys = "users:id"
 
 type UserService struct {
 	log   *logrus.Entry
-	redis *datasourse.Redis
+	redis *redis.Redis
 	rs    *RoleService
 	ur    *repositories.UserRepository
 }
 
 func NewUserService(
 	log *logrus.Entry,
-	redis *datasourse.Redis,
+	redis *redis.Redis,
 	rs *RoleService,
 	ur *repositories.UserRepository,
 ) *UserService {
@@ -44,10 +43,10 @@ func NewUserService(
 }
 
 // CreateUser функция создает пользователя
-func (s *UserService) CreateUser(dto *auth.RegisterDto) (*entity.User, error) {
+func (s *UserService) CreateUser(dto *dto.RegisterDto) (*entity.User, error) {
 	s.log.Debug("Создание пользователя")
 	s.log.Debug("Хеширование пароля")
-	passwordHash, err := pkg.PasswordHash(dto.Password)
+	passwordHash, err := passencoder.PasswordHash(dto.Password)
 	if err != nil {
 		s.log.Errorf("Ошибка при хешировании пароля: %v", err)
 		return nil, err
@@ -64,7 +63,7 @@ func (s *UserService) CreateUser(dto *auth.RegisterDto) (*entity.User, error) {
 	tx, err := s.ur.CreateTx()
 	if err != nil {
 		s.log.Errorf("Ошибка при открытии транзакции: %v", err)
-		return nil, errors.New(fmt.Sprintf("%s: %v", errormessages.CreateTx, err))
+		return nil, err
 	}
 
 	s.log.Debug("Поиск пользователь с таким же email: ", dto.Email)
@@ -75,26 +74,26 @@ func (s *UserService) CreateUser(dto *auth.RegisterDto) (*entity.User, error) {
 	s.log.Debug("Сохранение пользователя")
 	if err := s.ur.SaveTx(ctx, tx, &newUser); err != nil {
 		s.log.Errorf("Ошибка при сохранении пользователя: %v", err)
-		return nil, errors.New(fmt.Sprintf("%s: %v", errormessages.Save, err))
+		return nil, err
 	}
 
 	s.log.Debug("Поиск и роли")
 	role, err := s.rs.FindByNameTx(ctx, tx, roles.User)
 	if err != nil {
 		s.log.Errorf("ошибка при поиске роли: %v", err)
-		return nil, errors.New(fmt.Sprintf("%s: %v", errormessages.Find, err))
+		return nil, err
 	}
 
 	s.log.Debug("Установка роли пользователю: ", dto.Email)
 	if err := s.rs.SetRoleTx(ctx, tx, newUser.Id, role.Id); err != nil {
 		s.log.Errorf("Ошибка при установки роли пользователю: %v", err)
-		return nil, errors.New(fmt.Sprintf("%v: %v", errormessages.Save, err))
+		return nil, err
 	}
 
 	s.log.Debug("Отправка комита в БД ")
 	if err := s.ur.CommitTx(tx); err != nil {
 		s.log.Errorf("Ошибка при комите транзакции: %v", err)
-		return nil, errors.New(fmt.Sprintf("%s: %v", errormessages.CommitTx, err))
+		return nil, err
 	}
 
 	s.updateCache(&newUser)

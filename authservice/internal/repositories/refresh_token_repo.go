@@ -2,18 +2,18 @@ package repositories
 
 import (
 	"context"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/postgre"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"time"
 
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/jmoiron/sqlx"
 )
 
 type RefreshTokenRepository struct {
-	*datasourse.PostgresDb
+	*postgre.PostgresDb
 }
 
-func NewRefreshTokenRepository(db *datasourse.PostgresDb) *RefreshTokenRepository {
+func NewRefreshTokenRepository(db *postgre.PostgresDb) *RefreshTokenRepository {
 	return &RefreshTokenRepository{db}
 }
 

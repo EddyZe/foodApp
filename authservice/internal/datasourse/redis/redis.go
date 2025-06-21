@@ -1,4 +1,4 @@
-package datasourse
+package redis
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ type Redis struct {
 	cli        *redis.Client
 }
 
-func ConnectionRedis(cfg *config.RedisConfig) (*Redis, error) {
+func Connect(cfg *config.RedisConfig) (*Redis, error) {
 	r := &Redis{
 		expiration: time.Duration(cfg.Expiration) * time.Minute,
 		cli: redis.NewClient(&redis.Options{

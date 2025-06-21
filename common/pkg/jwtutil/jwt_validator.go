@@ -2,7 +2,7 @@ package jwtutil
 
 import (
 	"fmt"
-	"github.com/EddyZe/foodApp/common/models"
+	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/golang-jwt/jwt/v5"
 	"strings"
 	"time"

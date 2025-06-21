@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	entity2 "github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/util/codegen"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
@@ -34,7 +34,7 @@ func NewEmailVerificationCodeService(
 	}
 }
 
-func (s *EmailVerificationService) Save(code *entity.EmailVerificationCode) error {
+func (s *EmailVerificationService) Save(code *entity2.EmailVerificationCode) error {
 	c := code.Code
 	if c, _ := s.evr.FindByCode(c); c != nil {
 		return errors.New(errormsg.IsExists)
@@ -51,7 +51,7 @@ func (s *EmailVerificationService) Delete(code string) error {
 	return s.evr.DeleteByCode(code)
 }
 
-func (s *EmailVerificationService) GetByCode(code string) (*entity.EmailVerificationCode, error) {
+func (s *EmailVerificationService) GetByCode(code string) (*entity2.EmailVerificationCode, error) {
 	res, err := s.evr.FindByCode(code)
 	if err != nil {
 		s.log.Error(err)
@@ -65,7 +65,7 @@ func (s *EmailVerificationService) GenerateRandomCode(length int) string {
 	return codegen.GenerateRandomCode(length)
 }
 
-func (s *EmailVerificationService) GenerateAndSaveCode(userId int64, lengthCode int) (*entity.EmailVerificationCode, error) {
+func (s *EmailVerificationService) GenerateAndSaveCode(userId int64, lengthCode int) (*entity2.EmailVerificationCode, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	tx, err := s.evr.CreateTx()
@@ -75,7 +75,7 @@ func (s *EmailVerificationService) GenerateAndSaveCode(userId int64, lengthCode 
 	}
 
 	var code string
-	var codeEntity entity.EmailVerificationCode
+	var codeEntity entity2.EmailVerificationCode
 
 	for {
 		code = codegen.GenerateRandomCode(lengthCode)
@@ -85,7 +85,7 @@ func (s *EmailVerificationService) GenerateAndSaveCode(userId int64, lengthCode 
 
 		ex := time.Now().Add(time.Duration(s.cfg.CodeExpiredMinute) * time.Minute)
 
-		codeEntity = entity.EmailVerificationCode{
+		codeEntity = entity2.EmailVerificationCode{
 			Id:        sql.NullInt64{},
 			UserId:    userId,
 			Code:      code,
@@ -108,7 +108,7 @@ func (s *EmailVerificationService) GenerateAndSaveCode(userId int64, lengthCode 
 	return &codeEntity, nil
 }
 
-func (s *EmailVerificationService) GetByEmailVerifToken(token string) (*entity.EmailVerificationCode, bool) {
+func (s *EmailVerificationService) GetByEmailVerifToken(token string) (*entity2.EmailVerificationCode, bool) {
 	code, err := s.evr.FindCodeByVerifiedToken(token)
 	if err != nil {
 		s.log.Debugf("код по токену %v не найден: %v", token, err)
@@ -120,7 +120,7 @@ func (s *EmailVerificationService) GetByEmailVerifToken(token string) (*entity.E
 
 func (s *EmailVerificationService) SaveVerificationToken(codeId int64, token string) error {
 	expired := time.Now().Add(time.Duration(s.cfg.CodeExpiredMinute) * time.Minute)
-	tok := &entity.EmailVerificationToken{
+	tok := &entity2.EmailVerificationToken{
 		Id:        0,
 		Token:     token,
 		CodeId:    codeId,
@@ -134,7 +134,7 @@ func (s *EmailVerificationService) SetIsActiveToken(token string, isActive bool)
 	return s.evtr.SetIsActive(token, isActive)
 }
 
-func (s *EmailVerificationService) GetToken(token string) (*entity.EmailVerificationToken, bool) {
+func (s *EmailVerificationService) GetToken(token string) (*entity2.EmailVerificationToken, bool) {
 	res, err := s.evtr.FindToken(token)
 	if err != nil {
 		s.log.Debugf("токен не %s найден: %v ", token, err)
@@ -144,7 +144,7 @@ func (s *EmailVerificationService) GetToken(token string) (*entity.EmailVerifica
 	return res, true
 }
 
-func (s *EmailVerificationService) FindCode(code string) (*entity.EmailVerificationCode, bool) {
+func (s *EmailVerificationService) FindCode(code string) (*entity2.EmailVerificationCode, bool) {
 	res, err := s.evr.FindByCode(code)
 	if err != nil {
 		s.log.Debug("код не был найден: ", err)

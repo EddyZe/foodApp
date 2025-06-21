@@ -3,14 +3,14 @@ package handlers
 import (
 	"fmt"
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	dto2 "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
+	"github.com/EddyZe/foodApp/authservice/internal/util/passencoder"
 	"github.com/EddyZe/foodApp/authservice/internal/util/stringutils"
-	"github.com/EddyZe/foodApp/authservice/pkg"
-	"github.com/EddyZe/foodApp/common/dto"
-	"github.com/EddyZe/foodApp/common/dto/auth"
-	"github.com/EddyZe/foodApp/common/models"
+	"github.com/EddyZe/foodApp/common/domain/dto"
+	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
 	"github.com/EddyZe/foodApp/common/pkg/responseutil"
 	"github.com/EddyZe/foodApp/common/pkg/validate"
@@ -64,7 +64,7 @@ func (h *AuthHandler) Ping(c *gin.Context) {
 
 // Registry регистрация пользователя
 func (h *AuthHandler) Registry(c *gin.Context) {
-	var registerDto auth.RegisterDto
+	var registerDto dto2.RegisterDto
 
 	if msg, ok := validate.IsValidBody(c, &registerDto, h.lms); !ok {
 		responseutil.ErrorResponse(c, http.StatusBadRequest, msg)
@@ -102,7 +102,7 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusCreated, &auth.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusCreated, &dto2.TokensDto{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 	})
@@ -110,7 +110,7 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 
 // Login авторизирует пользователя
 func (h *AuthHandler) Login(c *gin.Context) {
-	var loginDto auth.LoginDto
+	var loginDto dto2.LoginDto
 	lang := c.GetHeader("Accept-Language")
 
 	if msg, ok := validate.IsValidBody(c, &loginDto, h.lms); !ok {
@@ -120,7 +120,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	u, ok := h.us.GetByEmail(loginDto.Email)
 
-	if !ok || !pkg.CheckEqualsPassword(loginDto.Password, u.Password) {
+	if !ok || !passencoder.CheckEqualsPassword(loginDto.Password, u.Password) {
 		responseutil.ErrorResponse(
 			c,
 			http.StatusBadRequest,
@@ -150,7 +150,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 	})
@@ -204,7 +204,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
 		AccessToken:  access.Token,
 		RefreshToken: refreshToken.Token,
 	})
@@ -406,7 +406,7 @@ func (h *AuthHandler) ConfirmEmailByUrl(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
 		AccessToken:  accessTok,
 		RefreshToken: refreshToken,
 	})
@@ -437,7 +437,7 @@ func (h *AuthHandler) ConfirmMail(c *gin.Context) {
 		return
 	}
 
-	var ce auth.ConfirmEmail
+	var ce dto2.ConfirmEmail
 	if msg, ok := validate.IsValidBody(c, &ce, h.lms); !ok {
 		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, dto.Message{
 			Message: msg,
@@ -488,7 +488,7 @@ func (h *AuthHandler) ConfirmMail(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &auth.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
 		AccessToken:  accessTok,
 		RefreshToken: refreshToken,
 	})

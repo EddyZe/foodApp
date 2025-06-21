@@ -1,9 +1,9 @@
 package responseutil
 
 import (
+	commonDto "github.com/EddyZe/foodApp/common/domain/dto"
 	"net/http"
 
-	commonDto "github.com/EddyZe/foodApp/common/dto"
 	"github.com/gin-gonic/gin"
 )
 

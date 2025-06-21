@@ -2,17 +2,17 @@ package repositories
 
 import (
 	"context"
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/postgre"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/jmoiron/sqlx"
 	"time"
 )
 
 type EmailVerificationTokenRepository struct {
-	*datasourse.PostgresDb
+	*postgre.PostgresDb
 }
 
-func NewEmailVerificationTokenRepository(db *datasourse.PostgresDb) *EmailVerificationTokenRepository {
+func NewEmailVerificationTokenRepository(db *postgre.PostgresDb) *EmailVerificationTokenRepository {
 	return &EmailVerificationTokenRepository{db}
 }
 
