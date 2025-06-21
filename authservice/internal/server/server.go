@@ -2,29 +2,29 @@ package server
 
 import (
 	services2 "github.com/EddyZe/foodApp/common/services/localizer"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
 	"github.com/EddyZe/foodApp/authservice/internal/handlers"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
-	"github.com/EddyZe/foodApp/authservice/pkg"
 	"github.com/EddyZe/foodApp/common/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func New(
+	logger *logrus.Entry,
 	us *services.UserService,
 	ts *services.TokenService,
 	rs *services.RoleService,
 	bs *services.BanService,
 	ms *services.MailService,
-	mvs *services.EmailVerificationCodeService,
+	mvs *services.EmailVerificationService,
 	lms *services2.LocalizeService,
 	appInfo *config.AppInfo,
 ) *http.Server {
-	logger := pkg.InitLogger("Auth-Service [SERVER]")
 	router := gin.New()
 
 	port := config.GetPort()
@@ -52,6 +52,7 @@ func New(
 	apiV1.POST("/logout", middleware.JwtFilter(ts.Secret()), auth.Logout)
 	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), auth.SendMailConfirmCode)
 	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), auth.ConfirmMail)
+	apiV1.GET("/confirm-email-url", auth.ConfirmEmailByUrl)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

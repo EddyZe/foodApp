@@ -1,0 +1,7 @@
+env: "local"
+envfile: ".env"
+logger:
+  level: "debug"
+  app-env: "development"
+  file-path: "/logs"
+  service: "auth"

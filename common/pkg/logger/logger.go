@@ -10,7 +10,7 @@ import (
 
 var log logrus.Logger
 
-func Init(service, logLevel, filepath string) *logrus.Entry {
+func Init(appenv, service, logLevel, filepath string) *logrus.Entry {
 	log := logrus.New()
 
 	if logLevel == "" {
@@ -27,7 +27,6 @@ func Init(service, logLevel, filepath string) *logrus.Entry {
 		log.SetLevel(logrus.InfoLevel)
 	}
 
-	appenv := os.Getenv("APP_ENV")
 	if appenv == "" {
 		appenv = "development"
 	}

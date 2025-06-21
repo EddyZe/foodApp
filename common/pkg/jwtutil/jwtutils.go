@@ -1,7 +1,7 @@
 package jwtutil
 
 import (
-	"github.com/EddyZe/foodApp/common/models"
+	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/gin-gonic/gin"
 	"strings"
 )

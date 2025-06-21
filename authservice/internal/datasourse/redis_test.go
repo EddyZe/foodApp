@@ -2,11 +2,12 @@ package datasourse
 
 import (
 	"encoding/json"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/redis"
 	"log"
 	"testing"
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/common/logger"
+	"github.com/EddyZe/foodApp/common/pkg/logger"
 	"github.com/go-playground/assert/v2"
 	"github.com/joho/godotenv"
 )
@@ -22,7 +23,7 @@ func loadAppCfg() *config.AppConfig {
 func TestSave(*testing.T) {
 	cfg := loadAppCfg()
 	log.Println(cfg.Redis.Host)
-	red, err := ConnectionRedis(cfg.Redis)
+	red, err := redis.Connect(cfg.Redis)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,7 +35,7 @@ func TestSave(*testing.T) {
 func TestGet(*testing.T) {
 	cfg := loadAppCfg()
 	log.Println(cfg.Redis.Host)
-	red, err := ConnectionRedis(cfg.Redis)
+	red, err := redis.Connect(cfg.Redis)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +54,7 @@ func TestGet(*testing.T) {
 func TestDel(*testing.T) {
 	cfg := loadAppCfg()
 	log.Println(cfg.Redis.Host)
-	red, err := ConnectionRedis(cfg.Redis)
+	red, err := redis.Connect(cfg.Redis)
 	if err != nil {
 		log.Fatal(err)
 	}

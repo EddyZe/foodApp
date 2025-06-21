@@ -1,4 +1,4 @@
-package pkg
+package passencoder
 
 import (
 	"errors"

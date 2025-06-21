@@ -2,18 +2,18 @@ package repositories
 
 import (
 	"context"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/postgre"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"time"
 
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/jmoiron/sqlx"
 )
 
 type AuditRepository struct {
-	*datasourse.PostgresDb
+	*postgre.PostgresDb
 }
 
-func NewAuditRepository(db *datasourse.PostgresDb) *AuditRepository {
+func NewAuditRepository(db *postgre.PostgresDb) *AuditRepository {
 	return &AuditRepository{db}
 }
 

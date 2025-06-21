@@ -50,6 +50,16 @@ create table if not exists auth.email_verification_codes
     expired_at  timestamp    not null check (expired_at > created_at)
 );
 
+create table if not exists  auth.email_verification_token
+(
+    id bigserial primary key ,
+    code_id bigint references auth.email_verification_codes(id) on delete cascade ,
+    token varchar(256) not null ,
+    is_active bool default true,
+    created_at timestamp not null default now(),
+    expired_at timestamp not null check ( expired_at > created_at)
+);
+
 create table if not exists auth.reset_password_codes
 (
     id         bigserial primary key,
@@ -127,6 +137,7 @@ create index on auth.black_list_token (expired_at);
 create index on auth.audit_log (created_at);
 create index on auth.access_token(token);
 create index on auth.access_token(expired_at);
+create index on auth.email_verification_token(token);
 
 insert into auth.role(name, description)
 VALUES ('user', 'Роль обычного пользователя');

@@ -2,17 +2,17 @@ package repositories
 
 import (
 	"context"
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/postgre"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/jmoiron/sqlx"
 	"time"
 )
 
 type EmailVerificationCodeRepository struct {
-	*datasourse.PostgresDb
+	*postgre.PostgresDb
 }
 
-func NewEmailVerificationCodeRepository(db *datasourse.PostgresDb) *EmailVerificationCodeRepository {
+func NewEmailVerificationCodeRepository(db *postgre.PostgresDb) *EmailVerificationCodeRepository {
 	return &EmailVerificationCodeRepository{db}
 }
 
@@ -117,6 +117,28 @@ func (r *EmailVerificationCodeRepository) SetVerified(codeString string, b bool)
 		return err
 	}
 	return nil
+}
+
+func (r *EmailVerificationCodeRepository) FindCodeByVerifiedToken(token string) (*entity.EmailVerificationCode, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var res entity.EmailVerificationCode
+
+	if err := r.GetContext(
+		ctx,
+		&res,
+		`select c.* 
+	from auth.email_verification_codes c
+    join auth.email_verification_token t
+        on t.code_id=c.id 
+	where t.token = $1`,
+		token,
+	); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
 }
 
 func (r *EmailVerificationCodeRepository) CreateTx() (*sqlx.Tx, error) {

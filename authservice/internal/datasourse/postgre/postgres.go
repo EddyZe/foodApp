@@ -1,4 +1,4 @@
-package datasourse
+package postgre
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type PostgresDb struct {
 	*sqlx.DB
 }
 
-func ConnectionPostgres(config *config.PostgresConfig) (*PostgresDb, error) {
+func Connect(config *config.PostgresConfig) (*PostgresDb, error) {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&client_encoding=%s",
 		config.User,
 		config.Pass,

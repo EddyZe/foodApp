@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/EddyZe/foodApp/authservice/internal/datasourse/redis"
+	entity2 "github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 
-	"github.com/EddyZe/foodApp/authservice/internal/datasourse"
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/common/pkg/redisutil"
 	"github.com/jmoiron/sqlx"
@@ -20,12 +20,12 @@ var roleName = "roles:name"
 
 type RoleService struct {
 	log   *logrus.Entry
-	redis *datasourse.Redis
+	redis *redis.Redis
 	repo  *repositories.RoleRepository
 	urr   *repositories.UserRoleRepository
 }
 
-func NewRoleService(log *logrus.Entry, redis *datasourse.Redis, repo *repositories.RoleRepository, urr *repositories.UserRoleRepository) *RoleService {
+func NewRoleService(log *logrus.Entry, redis *redis.Redis, repo *repositories.RoleRepository, urr *repositories.UserRoleRepository) *RoleService {
 	return &RoleService{
 		log:   log,
 		redis: redis,
@@ -34,11 +34,11 @@ func NewRoleService(log *logrus.Entry, redis *datasourse.Redis, repo *repositori
 	}
 }
 
-func (s *RoleService) GetRoleByUserId(userId int64) []entity.Role {
+func (s *RoleService) GetRoleByUserId(userId int64) []entity2.Role {
 	redisKey := redisutil.GenerateKey(rolesUserid, fmt.Sprint(userId))
 	redisRes, ok := s.redis.Get(redisKey)
 	if ok {
-		var role []entity.Role
+		var role []entity2.Role
 		if err := json.Unmarshal([]byte(redisRes), &role); err != nil {
 			s.log.Errorf("ошибка приобразования json из redis: %v", err)
 		}
@@ -53,11 +53,11 @@ func (s *RoleService) GetRoleByUserId(userId int64) []entity.Role {
 	return res
 }
 
-func (s *RoleService) FindByNameTx(ctx context.Context, tx *sqlx.Tx, name string) (*entity.Role, error) {
+func (s *RoleService) FindByNameTx(ctx context.Context, tx *sqlx.Tx, name string) (*entity2.Role, error) {
 	redisKey := redisutil.GenerateKey(roleName, name)
 	data, ok := s.redis.Get(redisKey)
 	if ok {
-		var role entity.Role
+		var role entity2.Role
 		if err := json.Unmarshal([]byte(data), &role); err != nil {
 			s.log.Errorf("ошибка преобразования json из redis: %v", err)
 		}
@@ -82,7 +82,7 @@ func (s *RoleService) SetRole(userId, roleId sql.NullInt64) error {
 	if err := s.redis.Del(redisutil.GenerateKey(rolesUserid, fmt.Sprint(userId.Int64))); err != nil {
 		s.log.Errorf("ошибка удаления ключа: %v", err)
 	}
-	if err := s.urr.SetUserRole(entity.UserRole{
+	if err := s.urr.SetUserRole(entity2.UserRole{
 		UserId: userId,
 		RoleId: roleId,
 	}); err != nil {
@@ -98,7 +98,7 @@ func (s *RoleService) SetRoleTx(ctx context.Context, tx *sqlx.Tx, userId, roleId
 	if err := s.redis.Del(redisutil.GenerateKey(rolesUserid, fmt.Sprint(userId.Int64))); err != nil {
 		s.log.Errorf("ошибка удаления ключа: %v", err)
 	}
-	if err := s.urr.SetUserRoleTx(ctx, tx, &entity.UserRole{
+	if err := s.urr.SetUserRoleTx(ctx, tx, &entity2.UserRole{
 		UserId: userId,
 		RoleId: roleId,
 	}); err != nil {

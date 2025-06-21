@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/EddyZe/foodApp/authservice/internal/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/sirupsen/logrus"
 )

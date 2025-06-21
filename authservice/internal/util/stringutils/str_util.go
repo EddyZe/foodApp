@@ -1,6 +1,8 @@
 package stringutils
 
-import "github.com/EddyZe/foodApp/authservice/internal/entity"
+import (
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
+)
 
 func RoleMapString(roles []entity.Role) []string {
 	var rls []string
