@@ -1,13 +1,13 @@
 package server
 
 import (
+	"github.com/EddyZe/foodApp/authservice/internal/transport/rest"
 	services2 "github.com/EddyZe/foodApp/common/services/localizer"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/authservice/internal/handlers"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/common/middleware"
 	"github.com/gin-gonic/gin"
@@ -39,7 +39,7 @@ func New(
 	router.Use(middleware.Logger(logger))
 	router.Use(gin.Recovery())
 
-	auth := handlers.NewAuthHandler(logger, us, ts, rs, bs, ms, mvs, lms, appInfo)
+	auth := rest.NewAuthHandler(logger, us, ts, rs, bs, ms, mvs, lms, appInfo)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)

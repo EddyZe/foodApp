@@ -9,11 +9,13 @@ import (
 
 func main() {
 
+	//загрузка конфигурации из yaml
 	cfg := config.MustLoad()
 	logger := setLogger(cfg.LoggerCfg)
 
-	config.LoadEnv(cfg.EnvFile)
 	//Загрузка конфигурации приложения
+	config.LoadEnv(cfg.EnvFile)
+
 	appConf := config.Config()
 
 	authapp.MustRun(logger, appConf)
