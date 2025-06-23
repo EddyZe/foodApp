@@ -177,3 +177,6 @@ other = "навсегда"
 
 [EmailConfirm]
 other = "Email уже подтвержден."
+
+[Forbidden]
+other = "Недостаточно прав"

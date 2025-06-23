@@ -5,6 +5,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse/postgre"
 	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/jmoiron/sqlx"
+	"time"
 )
 
 type AccessTokenRepository struct {
@@ -74,6 +75,24 @@ func (r *AccessTokenRepository) DeleteByTokenTx(ctx context.Context, tx *sqlx.Tx
 	}
 
 	return nil
+}
+
+func (r *AccessTokenRepository) FindByToken(token string) (*entity.AccessToken, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var res entity.AccessToken
+
+	if err := r.GetContext(
+		ctx,
+		&res,
+		"select * from auth.access_token where token = $1",
+		token,
+	); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
 }
 
 func (r *AccessTokenRepository) CreateTx() (*sqlx.Tx, error) {

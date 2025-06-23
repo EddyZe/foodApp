@@ -18,9 +18,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var userEmailKeys = "users:email"
-var userIdKeys = "users:id"
-
 type UserService struct {
 	log   *logrus.Entry
 	redis *redis.Redis
@@ -102,7 +99,7 @@ func (s *UserService) CreateUser(dto *dto.RegisterDto) (*entity.User, error) {
 }
 
 func (s *UserService) HasEmailExists(email string) bool {
-	redisKey := redisutil.GenerateKey(userEmailKeys, email)
+	redisKey := redisutil.GenerateKey(redis.UserEmailKeys, email)
 	if _, ok := s.redis.Get(redisKey); ok {
 		return true
 	}
@@ -110,7 +107,7 @@ func (s *UserService) HasEmailExists(email string) bool {
 }
 
 func (s *UserService) GetByEmail(email string) (*entity.User, bool) {
-	redisKey := redisutil.GenerateKey(userEmailKeys, email)
+	redisKey := redisutil.GenerateKey(redis.UserEmailKeys, email)
 	jsonDataUser, ok := s.redis.Get(redisKey)
 	if ok {
 		var res entity.User
@@ -141,7 +138,7 @@ func (s *UserService) GetByRefreshToken(refreshToken string) (*entity.User, erro
 }
 
 func (s *UserService) GetById(id int64) (*entity.User, error) {
-	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(id))
+	redisKey := redisutil.GenerateKey(redis.UserIdKeys, fmt.Sprint(id))
 	if jsonDataUser, ok := s.redis.Get(redisKey); ok {
 		var res entity.User
 		if err := json.Unmarshal([]byte(jsonDataUser), &res); err == nil {
@@ -176,8 +173,8 @@ func (s *UserService) SetEmailConfirmed(userId int64, b bool) (*entity.User, err
 }
 
 func (s *UserService) updateCache(u *entity.User) {
-	rediskey2 := redisutil.GenerateKey(userEmailKeys, u.Email)
-	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(u.Id.Int64))
+	rediskey2 := redisutil.GenerateKey(redis.UserEmailKeys, u.Email)
+	redisKey := redisutil.GenerateKey(redis.UserIdKeys, fmt.Sprint(u.Id.Int64))
 	if err := s.redis.Put(redisKey, u); err != nil {
 		s.log.Errorf("ошибка при сохранении в redis при изменении статуса email: %v", err)
 	}
@@ -188,8 +185,8 @@ func (s *UserService) updateCache(u *entity.User) {
 }
 
 func (s *UserService) removeCache(u *entity.User) {
-	rediskey2 := redisutil.GenerateKey(userEmailKeys, u.Email)
-	redisKey := redisutil.GenerateKey(userIdKeys, fmt.Sprint(u.Id.Int64))
+	rediskey2 := redisutil.GenerateKey(redis.UserEmailKeys, u.Email)
+	redisKey := redisutil.GenerateKey(redis.UserIdKeys, fmt.Sprint(u.Id.Int64))
 	if _, ok := s.redis.Get(redisKey); ok {
 		if err := s.redis.Del(redisKey); err != nil {
 			s.log.Debugf("%v ключ не удален из редис: %v", redisKey, err)
