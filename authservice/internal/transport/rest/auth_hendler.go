@@ -277,6 +277,16 @@ func (h *AuthHandler) BanUser(c *gin.Context) {
 		return
 	}
 
+	if userBan.IsForever {
+		ban, err := h.bs.BanUserForever(userBan.UserId, userBan.Cause)
+		if err != nil {
+			responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+			return
+		}
+		responseutil.SuccessResponse(c, http.StatusOK, ban)
+		return
+	}
+
 	expiredAt := time.Now().Add(time.Duration(userBan.Days) * 24 * time.Hour)
 
 	ban, err := h.bs.BanUser(userBan.UserId, userBan.Cause, expiredAt)

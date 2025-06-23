@@ -22,8 +22,8 @@ type ConfirmEmail struct {
 }
 
 type BanUser struct {
-	UserId      int64  `json:"user_id" binding:"required"`
-	Cause       string `json:"cause" binding:"required"`
-	Days        int32  `json:"days"`
-	IsFavourite bool   `json:"is_favourite,omitempty"`
+	UserId    int64  `json:"user_id" binding:"required"`
+	Cause     string `json:"cause" binding:"required"`
+	Days      int32  `json:"days,omitempty"`
+	IsForever bool   `json:"is_forever,omitempty"`
 }
