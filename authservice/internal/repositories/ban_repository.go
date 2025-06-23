@@ -65,7 +65,7 @@ func (r *BanRepository) FindActiveUserBans(userId int64) (*entity.Ban, error) {
 
 func (r *BanRepository) SetBanTx(ctx context.Context, tx *sqlx.Tx, ban *entity.Ban) error {
 	query, args, err := tx.BindNamed(
-		"insert into auth.users_ban (user_id, cause, expired_at) values (:user_id, :cause, :expired_at) returning id",
+		"insert into auth.users_ban (user_id, cause, expired_at) values (:user_id, :cause, :expired_at) returning id, created_at",
 		ban,
 	)
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *BanRepository) SetBanTx(ctx context.Context, tx *sqlx.Tx, ban *entity.B
 		ctx,
 		query,
 		args...,
-	).Scan(&ban.Id); err != nil {
+	).Scan(&ban.Id, &ban.CreatedAt); err != nil {
 		return err
 	}
 	return nil

@@ -3,7 +3,7 @@ package rest
 import (
 	"fmt"
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	dto2 "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
+	authDto "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/common/domain/dto"
@@ -206,7 +206,7 @@ func (h *EmailVerificationHandler) ConfirmEmailByUrl(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
 		AccessToken:  accessTok,
 		RefreshToken: refreshToken,
 	})
@@ -238,7 +238,7 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 		return
 	}
 
-	var ce dto2.ConfirmEmail
+	var ce authDto.ConfirmEmail
 	if msg, ok := validate.IsValidBody(c, &ce, h.lms); !ok {
 		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, dto.Message{
 			Message: msg,
@@ -289,7 +289,7 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
 		AccessToken:  accessTok,
 		RefreshToken: refreshToken,
 	})

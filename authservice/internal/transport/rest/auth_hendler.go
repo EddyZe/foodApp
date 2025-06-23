@@ -251,24 +251,7 @@ func (h *AuthHandler) isBan(userId int64) (*entity.Ban, bool) {
 
 // banResponse отправляет сообщение с ответом, что пользователь заблокирован
 func (h *AuthHandler) banResponse(c *gin.Context, ban *entity.Ban, lang string) {
-	var expired string
-	if ban.IsForever {
-		expired = h.lms.GetMessage(
-			localizer.AccountBanForever,
-			lang,
-			"forever",
-			nil)
-	} else {
-		expired = ban.ExpiredAt.Format("02-01-2006 15:04:05")
-	}
-
-	msg := h.lms.GetMessage(
-		localizer.AccountIsBlocked,
-		lang,
-		"The account is blocked",
-		map[string]interface{}{
-			"banExpired": expired,
-		})
+	msg := h.getMsgToBan(ban, lang)
 	responseutil.ErrorResponse(
 		c,
 		http.StatusForbidden,
@@ -289,6 +272,11 @@ func (h *AuthHandler) BanUser(c *gin.Context) {
 		userBan.Days = 5
 	}
 
+	if ban, ok := h.isBan(userBan.UserId); ok {
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.UserIsAlreadyBlocked, ban)
+		return
+	}
+
 	expiredAt := time.Now().Add(time.Duration(userBan.Days) * 24 * time.Hour)
 
 	ban, err := h.bs.BanUser(userBan.UserId, userBan.Cause, expiredAt)
@@ -298,4 +286,27 @@ func (h *AuthHandler) BanUser(c *gin.Context) {
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, ban)
+}
+
+func (h *AuthHandler) getMsgToBan(ban *entity.Ban, lang string) string {
+	var expired string
+	if ban.IsForever {
+		expired = h.lms.GetMessage(
+			localizer.AccountBanForever,
+			lang,
+			"forever",
+			nil)
+	} else {
+		expired = ban.ExpiredAt.Format("02-01-2006 15:04:05")
+	}
+
+	msg := h.lms.GetMessage(
+		localizer.AccountIsBlocked,
+		lang,
+		"The account is blocked",
+		map[string]interface{}{
+			"banExpired": expired,
+		})
+
+	return msg
 }
