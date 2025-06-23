@@ -13,4 +13,5 @@ const (
 	AccountIsBlocked        = "AccountIsBlocked"
 	AccountBanForever       = "AccountBanForever"
 	EmailConfirm            = "EmailConfirm"
+	Forbidden               = "Forbidden"
 )

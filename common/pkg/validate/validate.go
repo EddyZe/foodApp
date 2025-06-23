@@ -2,17 +2,17 @@ package validate
 
 import (
 	"fmt"
-	"github.com/EddyZe/foodApp/common/services/localizer"
+	localizer2 "github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/go-playground/validator/v10"
 )
 
-func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer.LocalizeService, lang string) string {
+func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.LocalizeService, lang string) string {
 	errorMessages := ""
 	for _, fieldError := range validationErrors {
 		switch fieldError.Tag() {
 		case "required":
 			msg := ls.GetMessage(
-				localizer.FieldRequired,
+				localizer2.FieldRequired,
 				lang,
 				fmt.Sprintf("Field %s required", fieldError.Field()),
 				map[string]interface{}{
@@ -23,7 +23,7 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer.Loc
 			errorMessages += msg + "; "
 		case "email":
 			msg := ls.GetMessage(
-				localizer.FieldEmail,
+				localizer2.FieldEmail,
 				lang,
 				fmt.Sprintf("Invalid email in field %s", fieldError.Field()),
 				map[string]interface{}{
@@ -34,7 +34,7 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer.Loc
 			errorMessages += msg
 		case "min":
 			msg := ls.GetMessage(
-				localizer.FieldMin,
+				localizer2.FieldMin,
 				lang,
 				fmt.Sprintf("Field %s must be at least %s characters long", fieldError.Field(), fieldError.Param()),
 				map[string]interface{}{
@@ -46,7 +46,7 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer.Loc
 			errorMessages += msg + "; "
 		default:
 			msg := ls.GetMessage(
-				localizer.FieldDefault,
+				localizer2.FieldDefault,
 				lang,
 				fmt.Sprintf("An error in the field %s. Rule: %s", fieldError.Field(), fieldError.Tag()),
 				map[string]interface{}{

@@ -20,3 +20,10 @@ type TokensDto struct {
 type ConfirmEmail struct {
 	Code string `json:"code" binding:"required"`
 }
+
+type BanUser struct {
+	UserId      int64  `json:"user_id" binding:"required"`
+	Cause       string `json:"cause" binding:"required"`
+	Days        int32  `json:"days"`
+	IsFavourite bool   `json:"is_favourite,omitempty"`
+}

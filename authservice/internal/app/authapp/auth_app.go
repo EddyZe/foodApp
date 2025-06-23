@@ -6,7 +6,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/server"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
-	"github.com/EddyZe/foodApp/common/services/localizer"
+	"github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,7 +29,6 @@ func MustRun(logger *logrus.Entry, appConf *config.AppConfig) {
 
 	logger.Infoln("Созание сервисов")
 	rs := services.NewRoleService(logger, red, rr, urr)
-	bs := services.NewBanService(logger, br)
 	us := services.NewUserService(
 		logger,
 		red,
@@ -37,6 +36,7 @@ func MustRun(logger *logrus.Entry, appConf *config.AppConfig) {
 		ur,
 	)
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
+	bs := services.NewBanService(logger, br, ts)
 	ms := services.NewMailService(logger, appConf.SmptConfig)
 	mvs := services.NewEmailVerificationCodeService(logger, appConf.EmailVerification, evr, evtr)
 	lms := localizer.NewLocalizeService(logger, appConf.LocalizerConfig.DirFiles)

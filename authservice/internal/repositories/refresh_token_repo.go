@@ -207,6 +207,24 @@ func (r *RefreshTokenRepository) RemoveAllRefreshTokensUserTx(ctx context.Contex
 	return tokens, rows.Err()
 }
 
+func (r *RefreshTokenRepository) FindByAccessToken(token string) (*entity.RefreshToken, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var res entity.RefreshToken
+	if err := r.GetContext(
+		ctx,
+		&res,
+		`select rt.* from auth.refresh_token rt 
+			join auth.access_token act on act.id=rt.access_token_id 
+			where act.token = $1`,
+		token,
+	); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (r *RefreshTokenRepository) RemoveByAccessTokenTx(ctx context.Context, tx *sqlx.Tx, accessToken string) (string, error) {
 	var refreshToken string
 	if err := tx.QueryRowxContext(

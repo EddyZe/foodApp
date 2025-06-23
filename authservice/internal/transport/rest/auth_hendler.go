@@ -1,8 +1,6 @@
 package rest
 
 import (
-	"fmt"
-	"github.com/EddyZe/foodApp/authservice/internal/config"
 	dto2 "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
 	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
@@ -12,25 +10,23 @@ import (
 	"github.com/EddyZe/foodApp/common/domain/dto"
 	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
+	"github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/EddyZe/foodApp/common/pkg/responseutil"
 	"github.com/EddyZe/foodApp/common/pkg/validate"
-	"github.com/EddyZe/foodApp/common/services/localizer"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type AuthHandler struct {
-	us           *services.UserService
-	ts           *services.TokenService
-	rs           *services.RoleService
-	log          *logrus.Entry
-	bs           *services.BanService
-	sendMailServ *services.MailService
-	mvs          *services.EmailVerificationService
-	lms          *localizer.LocalizeService
-	appInfo      *config.AppInfo
+	us  *services.UserService
+	ts  *services.TokenService
+	rs  *services.RoleService
+	log *logrus.Entry
+	bs  *services.BanService
+	lms *localizer.LocalizeService
 }
 
 func NewAuthHandler(
@@ -39,21 +35,15 @@ func NewAuthHandler(
 	ts *services.TokenService,
 	rs *services.RoleService,
 	bs *services.BanService,
-	sendMailServ *services.MailService,
-	mvs *services.EmailVerificationService,
 	lms *localizer.LocalizeService,
-	appInfo *config.AppInfo,
 ) *AuthHandler {
 	return &AuthHandler{
-		us:           us,
-		log:          log,
-		ts:           ts,
-		rs:           rs,
-		bs:           bs,
-		sendMailServ: sendMailServ,
-		mvs:          mvs,
-		lms:          lms,
-		appInfo:      appInfo,
+		us:  us,
+		log: log,
+		ts:  ts,
+		rs:  rs,
+		bs:  bs,
+		lms: lms,
 	}
 }
 
@@ -251,249 +241,6 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 	responseutil.SuccessResponse(c, http.StatusOK, nil)
 }
 
-// SendMailConfirmCode отправляет письмо для подтверждения почты
-func (h *AuthHandler) SendMailConfirmCode(c *gin.Context) {
-	lang := c.GetHeader("Accept-Language")
-
-	claims, ok := c.Get("claims")
-	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
-		return
-	}
-
-	claimsMap, ok := claims.(*models.JwtClaims)
-	if !ok {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	if claimsMap.EmailVerified {
-		h.responseEmailConfirmed(c, lang)
-		return
-	}
-
-	userId := claimsMap.Sub
-
-	u, err := h.us.GetById(userId)
-	if err != nil {
-		if err.Error() == errormsg.NotFound {
-			responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
-			return
-		}
-
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	code, err := h.mvs.GenerateAndSaveCode(u.Id.Int64, 8)
-	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	urlToken := h.ts.GenerateUUID()
-	if err := h.mvs.SaveVerificationToken(code.Id.Int64, urlToken); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		if err := h.mvs.Delete(code.Code); err != nil {
-			h.log.Error("ошибка удаления сегерированного кода")
-		}
-		return
-	}
-	url := fmt.Sprintf("%s/confirm-email-url?token=%s&code=%s", h.appInfo.AppUrl, urlToken, code.Code)
-
-	body := h.lms.GetMessage(
-		localizer.SendVerifiedCodeBody,
-		lang,
-		fmt.Sprintf("\"Send this is code: %s", code),
-		map[string]interface{}{
-			"appName":        h.appInfo.AppName,
-			"url":            url,
-			"appSupportLink": h.appInfo.SupportLink,
-			"code":           code.Code,
-		},
-	)
-
-	subject := h.lms.GetMessage(
-		localizer.SendVerifiedCodeSubject,
-		lang,
-		"Confirm Your Email",
-		map[string]interface{}{
-			"appName": h.appInfo.AppName,
-		},
-	)
-
-	if err := h.sendMailServ.SendMailFromApp(
-		subject,
-		body,
-		u.Email,
-	); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	responseutil.SuccessResponse(c, http.StatusOK, nil)
-}
-
-func (h *AuthHandler) ConfirmEmailByUrl(c *gin.Context) {
-	lang := c.GetHeader("Accept-language")
-	if lang == "" {
-		lang = "en"
-	}
-	tokenString := c.Query("token")
-	if tokenString == "" {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
-		return
-	}
-	codeString := c.Query("code")
-	if codeString == "" {
-		msg := h.lms.GetMessage(
-			localizer.InvalidEmailCode,
-			lang,
-			"Invalid code. Please check the entered code.",
-			nil,
-		)
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, dto.Message{
-			Message: msg,
-		})
-	}
-
-	token, ok := h.mvs.GetToken(tokenString)
-	if !ok || token.IsExpired() || !token.IsActive {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
-		return
-	}
-
-	code, ok := h.mvs.GetByEmailVerifToken(tokenString)
-	if !ok || code.Code != codeString || !code.IsVerified {
-		h.responseInvalidCode(c, lang)
-		return
-	}
-
-	if code.IsExpired() {
-		h.responseExpiredCode(c, lang)
-		return
-	}
-
-	updateUser, err := h.us.SetEmailConfirmed(code.UserId, true)
-	if err != nil {
-		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	if err := h.mvs.Delete(codeString); err != nil {
-		h.log.Error(err)
-		code.IsVerified = false
-		if err := h.mvs.SetVerifiedCode(code.Code, code.IsVerified); err != nil {
-			h.log.Error(err)
-		}
-		token.IsActive = false
-		if err := h.mvs.SetIsActiveToken(tokenString, token.IsActive); err != nil {
-			h.log.Error(err)
-		}
-	}
-
-	userRoles := h.rs.GetRoleByUserId(updateUser.Id.Int64)
-	accessTok, err := h.ts.GenerateJwtByUser(updateUser, userRoles)
-	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-	refreshToken := h.ts.GenerateUUID()
-	if _, _, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken); err != nil {
-		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
-		AccessToken:  accessTok,
-		RefreshToken: refreshToken,
-	})
-}
-
-func (h *AuthHandler) ConfirmMail(c *gin.Context) {
-	lang := c.GetHeader("Accept-Language")
-	token, ok := jwtutil.ExtractBearerTokenHeader(c)
-	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
-		return
-	}
-
-	claims, ok := c.Get("claims")
-	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
-		return
-	}
-
-	claimsMap, ok := claims.(*models.JwtClaims)
-	if !ok {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	if claimsMap.EmailVerified {
-		h.responseEmailConfirmed(c, lang)
-		return
-	}
-
-	var ce dto2.ConfirmEmail
-	if msg, ok := validate.IsValidBody(c, &ce, h.lms); !ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, dto.Message{
-			Message: msg,
-		})
-		return
-	}
-
-	code, ok := h.mvs.FindCode(ce.Code)
-	if !ok || code.Code != ce.Code || !code.IsVerified {
-		h.responseInvalidCode(c, lang)
-		return
-	}
-
-	if code.IsExpired() {
-		h.responseExpiredCode(c, lang)
-		return
-	}
-
-	updateUser, err := h.us.SetEmailConfirmed(claimsMap.Sub, true)
-	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	if err := h.mvs.Delete(code.Code); err != nil {
-		h.log.Error(err)
-		code.IsVerified = false
-		if err := h.mvs.SetVerifiedCode(code.Code, code.IsVerified); err != nil {
-			h.log.Error("ошибка при замене статуса email code: ", err)
-		}
-	}
-
-	if err := h.ts.Logout(token); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	userRoles := h.rs.GetRoleByUserId(updateUser.Id.Int64)
-	accessTok, err := h.ts.GenerateJwtByUser(updateUser, userRoles)
-	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-	refreshToken := h.ts.GenerateUUID()
-	if _, _, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken); err != nil {
-		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
-		return
-	}
-
-	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
-		AccessToken:  accessTok,
-		RefreshToken: refreshToken,
-	})
-}
-
 // isBan проверка блокировки пользователя
 func (h *AuthHandler) isBan(userId int64) (*entity.Ban, bool) {
 	if ban, ok := h.bs.GetActiveUserBan(userId); ok {
@@ -531,38 +278,24 @@ func (h *AuthHandler) banResponse(c *gin.Context, ban *entity.Ban, lang string) 
 		})
 }
 
-func (h *AuthHandler) responseInvalidCode(c *gin.Context, lang string) {
-	msg := h.lms.GetMessage(
-		localizer.InvalidEmailCode,
-		lang,
-		"Invalid code. Please check the entered code.",
-		nil,
-	)
-	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, dto.Message{
-		Message: msg,
-	})
-}
+func (h *AuthHandler) BanUser(c *gin.Context) {
+	var userBan *dto2.BanUser
 
-func (h *AuthHandler) responseExpiredCode(c *gin.Context, lang string) {
-	msg := h.lms.GetMessage(
-		localizer.ExpiredEmailCode,
-		lang,
-		"The code has expired!",
-		nil,
-	)
-	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, dto.Message{
-		Message: msg,
-	})
-}
+	if msg, ok := validate.IsValidBody(c, &userBan, h.lms); !ok {
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
+		return
+	}
+	if userBan.Days == 0 {
+		userBan.Days = 5
+	}
 
-func (h *AuthHandler) responseEmailConfirmed(c *gin.Context, lang string) {
-	msg := h.lms.GetMessage(
-		localizer.EmailConfirm,
-		lang,
-		"Email is confirmed",
-		nil,
-	)
-	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.EmailIsConfirmed, &dto.Message{
-		Message: msg,
-	})
+	expiredAt := time.Now().Add(time.Duration(userBan.Days) * 24 * time.Hour)
+
+	ban, err := h.bs.BanUser(userBan.UserId, userBan.Cause, expiredAt)
+	if err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, ban)
 }

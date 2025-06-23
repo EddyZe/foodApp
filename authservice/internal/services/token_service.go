@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/EddyZe/foodApp/authservice/internal/datasourse/redis"
-	entity2 "github.com/EddyZe/foodApp/authservice/internal/domain/entity"
+	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/authservice/internal/util/stringutils"
 	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
 	"github.com/EddyZe/foodApp/common/pkg/redisutil"
+	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 	"time"
 
@@ -19,8 +20,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
-
-var refreshTokenUser = "refresh:token:user"
 
 type TokenService struct {
 	log   *logrus.Entry
@@ -68,7 +67,7 @@ func (s *TokenService) GenerateJwt(claims map[string]interface{}) (string, error
 	return tokenString, nil
 }
 
-func (s *TokenService) GenerateJwtByUser(u *entity2.User, roles []entity2.Role) (string, error) {
+func (s *TokenService) GenerateJwtByUser(u *entity.User, roles []entity.Role) (string, error) {
 	token, err := s.GenerateJwt(
 		jwtutil.GenerateClaims(&models.JwtClaims{
 			Email:         u.Email,
@@ -92,7 +91,7 @@ func (s *TokenService) GenerateUUID() string {
 }
 
 func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
-	redisKey := redisutil.GenerateKey(refreshTokenUser, refreshToken)
+	redisKey := redisutil.GenerateKey(redis.RefreshTokenUser, refreshToken)
 	jsonToken, ok := s.redis.Get(redisKey)
 	if !ok {
 		jt, err := s.rs.FindByToken(refreshToken)
@@ -114,7 +113,7 @@ func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
 
 	}
 
-	var res entity2.RefreshToken
+	var res entity.RefreshToken
 	if err := json.Unmarshal([]byte(jsonToken), &res); err != nil {
 		s.log.Error("ошибка при преобразовании json refresh token", err)
 		return false
@@ -128,7 +127,7 @@ func (s *TokenService) ValidateRefreshToken(refreshToken string) bool {
 	return true
 }
 
-func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refreshToken string) (*entity2.AccessToken, *entity2.RefreshToken, error) {
+func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refreshToken string) (*entity.AccessToken, *entity.RefreshToken, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	tx, err := s.ar.CreateTx()
@@ -138,7 +137,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	}
 	expiredAccess := time.Now().Add(time.Duration(s.cfg.TokenExpirationMinute) * time.Minute)
 
-	at := entity2.AccessToken{
+	at := entity.AccessToken{
 		Token:     accessToken,
 		ExpiredAt: expiredAccess,
 	}
@@ -149,7 +148,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	}
 
 	expiredRefresh := time.Now().Add(time.Duration(s.cfg.RefreshTokenExpirationMinute) * time.Minute)
-	rt := entity2.RefreshToken{
+	rt := entity.RefreshToken{
 		UserId:        userId,
 		AccessTokenId: at.Id,
 		Token:         refreshToken,
@@ -168,7 +167,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	}
 
 	s.log.Debug("сохранение токена в редис")
-	redisKey := redisutil.GenerateKey(refreshTokenUser, refreshToken)
+	redisKey := redisutil.GenerateKey(redis.RefreshTokenUser, refreshToken)
 
 	ex := time.Duration(int64(s.cfg.RefreshTokenExpirationMinute)) * time.Minute
 
@@ -179,7 +178,7 @@ func (s *TokenService) SaveRefreshAndAccessToken(userId int64, accessToken, refr
 	return &at, &rt, err
 }
 
-func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]interface{}) (*entity2.AccessToken, *entity2.RefreshToken, error) {
+func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]interface{}) (*entity.AccessToken, *entity.RefreshToken, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -190,9 +189,9 @@ func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]inte
 		return nil, nil, err
 	}
 
-	var token *entity2.RefreshToken
+	var token *entity.RefreshToken
 
-	rediskey := redisutil.GenerateKey(refreshTokenUser, refreshToken)
+	rediskey := redisutil.GenerateKey(redis.RefreshTokenUser, refreshToken)
 
 	s.log.Debug("поиск рефрешь токена в редисе")
 	if jsonToken, ok := s.redis.Get(rediskey); ok {
@@ -248,8 +247,8 @@ func (s *TokenService) ReplaceTokens(refreshToken string, claims map[string]inte
 }
 
 func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) error {
-	redisKey := redisutil.GenerateKey(refreshTokenUser, refreshToken)
-	var res *entity2.RefreshToken
+	redisKey := redisutil.GenerateKey(redis.RefreshTokenUser, refreshToken)
+	var res *entity.RefreshToken
 	if jsonData, ok := s.redis.Get(redisKey); ok {
 		if err := json.Unmarshal([]byte(jsonData), &res); err != nil {
 			s.log.Error("ошибка десириализации json refresh token", err)
@@ -259,7 +258,7 @@ func (s *TokenService) IsRevokeRefreshToken(refreshToken string, isRevoke bool) 
 		}
 	}
 	if res == nil {
-		r, err := s.rs.FindByToken(refreshTokenUser)
+		r, err := s.rs.FindByToken(refreshToken)
 		if err != nil {
 			s.log.Error("<UNK> <UNK> <UNK> refresh token", err)
 			return errors.New(errormsg.NotFound)
@@ -301,7 +300,7 @@ func (s *TokenService) Logout(accessToken string) error {
 		return err
 	}
 
-	redisKey := redisutil.GenerateKey(refreshTokenUser, refreshtoken)
+	redisKey := redisutil.GenerateKey(redis.RefreshTokenUser, refreshtoken)
 	if err := s.redis.Del(redisKey); err != nil {
 		s.log.Error("ошибка удаления refresh token из redis", err)
 	}
@@ -331,6 +330,32 @@ func (s *TokenService) LogoutAll(userid int64) error {
 		s.log.Error("Ошибка при создании транзакции при удалении всех токенов: ", err)
 		return err
 	}
+	if err := s.logoutAll(ctx, tx, userid); err != nil {
+		s.log.Error("ошибка при вызоде из всех устройст: ", err)
+		return err
+	}
+
+	if err := s.rs.CommitTx(tx); err != nil {
+		s.log.Error("ошибка при комите транзацкии при удалении токенов: ", err)
+		return err
+	}
+	return nil
+}
+
+func (s *TokenService) LogoutAllTx(ctx context.Context, tx *sqlx.Tx, userid int64) error {
+	if err := s.logoutAll(ctx, tx, userid); err != nil {
+		s.log.Error("ошибка при выхода пользователя из системы: ", err)
+		return err
+	}
+
+	if err := s.rs.CommitTx(tx); err != nil {
+		s.log.Error("ошибка при комите транзацкии при удалении токенов: ", err)
+		return err
+	}
+	return nil
+}
+
+func (s *TokenService) logoutAll(ctx context.Context, tx *sqlx.Tx, userid int64) error {
 	tokens, err := s.rs.RemoveAllRefreshTokensUserTx(ctx, tx, userid)
 	if err != nil {
 		s.log.Error("ошибка удаления refresh токенов: ", err)
@@ -341,25 +366,31 @@ func (s *TokenService) LogoutAll(userid int64) error {
 
 	var ids []int64
 
-	for _, token := range tokens {
-		ids = append(ids, token.AccessTokenId.Int64)
-		redisKey := redisutil.GenerateKey(refreshTokenUser, token.Token)
-		if err := s.redis.Del(redisKey); err != nil {
-			continue
+	if len(tokens) > 0 {
+		for _, token := range tokens {
+			ids = append(ids, token.AccessTokenId.Int64)
+			redisKey := redisutil.GenerateKey(redis.RefreshTokenUser, token.Token)
+			if err := s.redis.Del(redisKey); err != nil {
+				continue
+			}
+		}
+
+		if err := s.ar.DeleteByIdsTx(ctx, tx, ids...); err != nil {
+			s.log.Error("ошибка при удалении access токеновт", err)
+			return err
 		}
 	}
-
-	if err := s.ar.DeleteByIdsTx(ctx, tx, ids...); err != nil {
-		s.log.Error("ошибка при удалении access токеновт", err)
-		return err
-	}
-
-	if err := s.rs.CommitTx(tx); err != nil {
-		s.log.Error("ошибка при комите транзацкии при удалении токенов: ", err)
-		return err
-	}
-
 	return nil
+}
+
+func (s *TokenService) GetAccessToken(token string) (*entity.AccessToken, bool) {
+	tok, err := s.ar.FindByToken(token)
+	if err != nil {
+		s.log.Debug("Access token не найден в базе: ", err)
+		return nil, false
+	}
+
+	return tok, true
 }
 
 func (s *TokenService) Secret() string {

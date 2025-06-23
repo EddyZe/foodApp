@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/EddyZe/foodApp/authservice/internal/transport/rest"
-	services2 "github.com/EddyZe/foodApp/common/services/localizer"
+	services2 "github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
@@ -39,7 +39,8 @@ func New(
 	router.Use(middleware.Logger(logger))
 	router.Use(gin.Recovery())
 
-	auth := rest.NewAuthHandler(logger, us, ts, rs, bs, ms, mvs, lms, appInfo)
+	auth := rest.NewAuthHandler(logger, us, ts, rs, bs, lms)
+	emailVerificationHandler := rest.NewEmailVerificationHandler(us, ts, rs, logger, ms, mvs, lms, appInfo)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
@@ -50,9 +51,11 @@ func New(
 	apiV1.POST("/refresh", auth.Refresh)
 	apiV1.POST("/logout-all", middleware.JwtFilter(ts.Secret()), auth.LogoutAll)
 	apiV1.POST("/logout", middleware.JwtFilter(ts.Secret()), auth.Logout)
-	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), auth.SendMailConfirmCode)
-	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), auth.ConfirmMail)
-	apiV1.GET("/confirm-email-url", auth.ConfirmEmailByUrl)
+	apiV1.POST("/ban", middleware.JwtFilter(ts.Secret()), middleware.IsAdmin(lms), auth.BanUser)
+
+	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.SendMailConfirmCode)
+	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.ConfirmMail)
+	apiV1.GET("/confirm-email-url", emailVerificationHandler.ConfirmEmailByUrl)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

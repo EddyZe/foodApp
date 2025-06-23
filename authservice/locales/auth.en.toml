@@ -175,3 +175,6 @@ other = "forever"
 
 [EmailConfirm]
 other = "Email is confirmed"
+
+[Forbidden]
+other = "Not enough right"
