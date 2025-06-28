@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/EddyZe/foodApp/authservice/internal/config"
-	"github.com/EddyZe/foodApp/common/pkg/logger"
 	"github.com/go-playground/assert/v2"
 	"github.com/joho/godotenv"
 )
@@ -17,7 +16,7 @@ func loadAppCfg() *config.AppConfig {
 	if err != nil {
 		log.Println(err)
 	}
-	return config.Config(logger.Init("TEST", "debug", "./../logs"))
+	return config.Config()
 }
 
 func TestSave(*testing.T) {
