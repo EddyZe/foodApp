@@ -98,3 +98,12 @@ func (s *BanService) setBan(userId int64, ban *entity.Ban) error {
 
 	return nil
 }
+
+func (s *BanService) UnBanUser(userId int64) bool {
+	if err := s.repo.DeleteByUserId(userId); err != nil {
+		s.log.Error("ошибка при разблокировке пользователя: ", err)
+		return false
+	}
+
+	return true
+}

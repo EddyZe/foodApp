@@ -1,7 +1,7 @@
 package rest
 
 import (
-	dto2 "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
+	authDto "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
 	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
@@ -54,7 +54,7 @@ func (h *AuthHandler) Ping(c *gin.Context) {
 
 // Registry регистрация пользователя
 func (h *AuthHandler) Registry(c *gin.Context) {
-	var registerDto dto2.RegisterDto
+	var registerDto authDto.RegisterDto
 
 	if msg, ok := validate.IsValidBody(c, &registerDto, h.lms); !ok {
 		responseutil.ErrorResponse(c, http.StatusBadRequest, msg)
@@ -92,7 +92,7 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusCreated, &dto2.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusCreated, &authDto.TokensDto{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 	})
@@ -100,7 +100,7 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 
 // Login авторизирует пользователя
 func (h *AuthHandler) Login(c *gin.Context) {
-	var loginDto dto2.LoginDto
+	var loginDto authDto.LoginDto
 	lang := c.GetHeader("Accept-Language")
 
 	if msg, ok := validate.IsValidBody(c, &loginDto, h.lms); !ok {
@@ -140,7 +140,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 	})
@@ -194,7 +194,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	responseutil.SuccessResponse(c, http.StatusOK, &dto2.TokensDto{
+	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
 		AccessToken:  access.Token,
 		RefreshToken: refreshToken.Token,
 	})
@@ -262,7 +262,7 @@ func (h *AuthHandler) banResponse(c *gin.Context, ban *entity.Ban, lang string) 
 }
 
 func (h *AuthHandler) BanUser(c *gin.Context) {
-	var userBan *dto2.BanUser
+	var userBan *authDto.BanUser
 
 	if msg, ok := validate.IsValidBody(c, &userBan, h.lms); !ok {
 		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
@@ -296,6 +296,22 @@ func (h *AuthHandler) BanUser(c *gin.Context) {
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, ban)
+}
+
+func (h *AuthHandler) UnBanUser(c *gin.Context) {
+	var unban authDto.UnBanUser
+
+	if msg, ok := validate.IsValidBody(c, &unban, h.lms); !ok {
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
+		return
+	}
+
+	if !h.bs.UnBanUser(unban.UserId) {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) getMsgToBan(ban *entity.Ban, lang string) string {

@@ -82,6 +82,21 @@ func (r *BanRepository) SetBanTx(ctx context.Context, tx *sqlx.Tx, ban *entity.B
 	return nil
 }
 
+func (r *BanRepository) DeleteByUserId(userId int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := r.QueryRowxContext(
+		ctx,
+		`delete from auth.users_ban where user_id = $1`,
+		userId,
+	).Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *BanRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

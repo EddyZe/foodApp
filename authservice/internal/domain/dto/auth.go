@@ -27,3 +27,6 @@ type BanUser struct {
 	Days      int32  `json:"days,omitempty"`
 	IsForever bool   `json:"is_forever,omitempty"`
 }
+type UnBanUser struct {
+	UserId int64 `json:"user_id" binding:"required"`
+}
