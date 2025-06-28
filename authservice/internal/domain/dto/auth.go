@@ -30,3 +30,7 @@ type BanUser struct {
 type UnBanUser struct {
 	UserId int64 `json:"user_id" binding:"required"`
 }
+
+type ResetPassword struct {
+	Email string `json:"email" binding:"required,email"`
+}

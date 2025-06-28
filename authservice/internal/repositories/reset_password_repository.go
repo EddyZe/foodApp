@@ -107,6 +107,22 @@ func (r *ResetPasswordRepository) DeleteByCodeTx(ctx context.Context, tx *sqlx.T
 	return nil
 }
 
+func (r *ResetPasswordRepository) SetIsValid(code string, b bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := r.QueryRowxContext(
+		ctx,
+		`update auth.reset_password_codes set is_valid=$1 where code = $2`,
+		b,
+		code,
+	).Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *ResetPasswordRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

@@ -33,8 +33,25 @@ func (s *ResetPasswordService) Save(userId int64, code string) (*entity.ResetPas
 	}
 
 	if err := s.repo.Save(&newCode); err != nil {
+		s.log.Error("ошибка при сохрании кода сброса пароля: ", err)
 		return nil, errors.New(errormsg.IsExists)
 	}
 
 	return &newCode, nil
+}
+
+func (s *ResetPasswordService) SetIsValid(code string, b bool) error {
+	if err := s.repo.SetIsValid(code, b); err != nil {
+		s.log.Error("ошибка при обновлении статуса resetPassword: ", err)
+		return errors.New(errormsg.NotFound)
+	}
+	return nil
+}
+
+func (s *ResetPasswordService) DeleteByCode(code string) error {
+	if err := s.repo.DeleteByCode(code); err != nil {
+		s.log.Error("ошибка при удалении кода сбросов пароля: ", err)
+		return errors.New(errormsg.NotFound)
+	}
+	return nil
 }

@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/EddyZe/foodApp/authservice/internal/transport/rest"
-	services2 "github.com/EddyZe/foodApp/common/pkg/localizer"
+	commonService "github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
@@ -22,7 +22,8 @@ func New(
 	bs *services.BanService,
 	ms *services.MailService,
 	mvs *services.EmailVerificationService,
-	lms *services2.LocalizeService,
+	lms *commonService.LocalizeService,
+	rp *services.ResetPasswordService,
 	appInfo *config.AppInfo,
 ) *http.Server {
 	router := gin.New()
@@ -41,6 +42,7 @@ func New(
 
 	auth := rest.NewAuthHandler(logger, us, ts, rs, bs, lms)
 	emailVerificationHandler := rest.NewEmailVerificationHandler(us, ts, rs, logger, ms, mvs, lms, appInfo)
+	resetPasswordHandler := rest.NewResetPasswordHandler(logger, ms, rp, lms, appInfo)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
@@ -57,6 +59,8 @@ func New(
 	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.SendMailConfirmCode)
 	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.ConfirmMail)
 	apiV1.GET("/confirm-email-url", emailVerificationHandler.ConfirmEmailByUrl)
+
+	apiV1.POST("/code", resetPasswordHandler.SendCode)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s
