@@ -24,7 +24,7 @@ func (r *BanRepository) Save(ban *entity.Ban) error {
 	query, args, err := r.BindNamed(
 		`insert into auth.users_ban(user_id, cause, expired_at, is_forever) 
 			values (:user_id, :cause, :expired_at, :is_forever)
-			returning id`,
+			returning id, created_at`,
 		ban,
 	)
 
@@ -36,7 +36,7 @@ func (r *BanRepository) Save(ban *entity.Ban) error {
 		ctx,
 		query,
 		args,
-	).Scan(&ban.Id); err != nil {
+	).Scan(&ban.Id, &ban.CreatedAt); err != nil {
 		return err
 	}
 
@@ -65,7 +65,7 @@ func (r *BanRepository) FindActiveUserBans(userId int64) (*entity.Ban, error) {
 
 func (r *BanRepository) SetBanTx(ctx context.Context, tx *sqlx.Tx, ban *entity.Ban) error {
 	query, args, err := tx.BindNamed(
-		"insert into auth.users_ban (user_id, cause, expired_at) values (:user_id, :cause, :expired_at) returning id, created_at",
+		"insert into auth.users_ban (user_id, cause, expired_at, is_forever) values (:user_id, :cause, :expired_at, :is_forever) returning id, created_at",
 		ban,
 	)
 	if err != nil {
@@ -79,6 +79,21 @@ func (r *BanRepository) SetBanTx(ctx context.Context, tx *sqlx.Tx, ban *entity.B
 	).Scan(&ban.Id, &ban.CreatedAt); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (r *BanRepository) DeleteByUserId(userId int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := r.QueryRowxContext(
+		ctx,
+		`delete from auth.users_ban where user_id = $1`,
+		userId,
+	).Err(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

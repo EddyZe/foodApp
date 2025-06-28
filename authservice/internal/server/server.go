@@ -52,6 +52,7 @@ func New(
 	apiV1.POST("/logout-all", middleware.JwtFilter(ts.Secret()), auth.LogoutAll)
 	apiV1.POST("/logout", middleware.JwtFilter(ts.Secret()), auth.Logout)
 	apiV1.POST("/ban", middleware.JwtFilter(ts.Secret()), middleware.IsAdmin(lms), auth.BanUser)
+	apiV1.POST("/unban", middleware.JwtFilter(ts.Secret()), middleware.IsAdmin(lms), auth.UnBanUser)
 
 	apiV1.POST("/email-code", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.SendMailConfirmCode)
 	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.ConfirmMail)
