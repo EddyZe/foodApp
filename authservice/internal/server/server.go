@@ -42,7 +42,7 @@ func New(
 
 	auth := rest.NewAuthHandler(logger, us, ts, rs, bs, lms)
 	emailVerificationHandler := rest.NewEmailVerificationHandler(us, ts, rs, logger, ms, mvs, lms, appInfo)
-	resetPasswordHandler := rest.NewResetPasswordHandler(logger, ms, rp, lms, appInfo)
+	resetPasswordHandler := rest.NewResetPasswordHandler(logger, us, ms, rp, lms, appInfo)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/ping", auth.Ping)
@@ -60,7 +60,7 @@ func New(
 	apiV1.POST("/confirm-email", middleware.JwtFilter(ts.Secret()), emailVerificationHandler.ConfirmMail)
 	apiV1.GET("/confirm-email-url", emailVerificationHandler.ConfirmEmailByUrl)
 
-	apiV1.POST("/code", resetPasswordHandler.SendCode)
+	apiV1.POST("/reset-password-code", resetPasswordHandler.SendCode)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

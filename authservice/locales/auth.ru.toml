@@ -180,3 +180,138 @@ other = "Email уже подтвержден."
 
 [Forbidden]
 other = "Недостаточно прав"
+
+[UserNotFoundByEmail]
+other = "Пользователь с адресом: '{{.email}}' - не найден"
+
+[ResetPasswordEmail]
+other = """
+<html>
+  <head>
+    <style>
+      /* Сброс стилей по умолчанию */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        background-color: #f4f6f9;
+        padding: 40px 20px;
+        color: #333333;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        background: linear-gradient(135deg, #1a73e8, #4c8bf5);
+        color: #ffffff;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 500;
+      }
+
+      .content {
+        padding: 30px 20px;
+      }
+
+      .content p {
+        margin-bottom: 15px;
+        font-size: 16px;
+      }
+
+      .code {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1a73e8;
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        margin: 20px 0;
+        letter-spacing: 2px;
+      }
+
+      ol {
+        margin: 15px 0 20px 20px;
+        font-size: 16px;
+      }
+
+      ol li {
+        margin-bottom: 10px;
+      }
+
+      .footer {
+        background-color: #f8f9fa;
+        padding: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #666666;
+      }
+
+      .footer a {
+        color: #1a73e8;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 600px) {
+        .container {
+          margin: 0 10px;
+        }
+
+        .content {
+          padding: 20px 15px;
+        }
+
+        .code {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Сброс пароля для {{.appName}}</h1>
+      </div>
+      <div class="content">
+        <p><strong>Здравствуйте,</strong></p>
+        <p>Мы получили запрос на сброс вашего пароля для <strong>{{.appName}}</strong>. Пожалуйста, используйте код ниже для сброса пароля:</p>
+        <div class="code">{{.code}}</div>
+        <ol>
+          <li>Откройте <strong>{{.appName}}</strong> на вашем устройстве.</li>
+          <li>Перейдите в раздел сброса пароля.</li>
+          <li>Введите код в соответствующее поле.</li>
+        </ol>
+        <p>Код действителен в течение 10 минут. Если срок действия кода истек, вы можете запросить новый в приложении.</p>
+        <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо или свяжитесь с нами по адресу <a href="{{.appSupportLink}}">{{.appSupportLink}}</a>.</p>
+      </div>
+      <div class="footer">
+        <p>С наилучшими пожеланиями,<br>Команда <strong>{{.appName}}</strong></p>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+
+[ResetPasswordSubject]
+other = "Password reset {{.appName}}"

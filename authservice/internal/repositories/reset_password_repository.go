@@ -22,7 +22,7 @@ func (r *ResetPasswordRepository) Save(reset *entity.ResetPasswordCode) error {
 
 	query, args, err := r.BindNamed(
 		`insert into auth.reset_password_codes (user_id, code, expired_at) 
-			values (:user_id, :code, :expired_at) returning id`,
+			values (:user_id, :code, :expired_at) returning id, created_at, is_valid`,
 		reset,
 	)
 
@@ -34,7 +34,7 @@ func (r *ResetPasswordRepository) Save(reset *entity.ResetPasswordCode) error {
 		ctx,
 		query,
 		args...,
-	).Scan(&reset.Id); err != nil {
+	).Scan(&reset.Id, &reset.CreatedAt, &reset.IsValid); err != nil {
 		return err
 	}
 
@@ -44,7 +44,7 @@ func (r *ResetPasswordRepository) Save(reset *entity.ResetPasswordCode) error {
 func (r *ResetPasswordRepository) SaveTx(ctx context.Context, tx *sqlx.Tx, reset *entity.ResetPasswordCode) error {
 	query, args, err := tx.BindNamed(
 		`insert into auth.reset_password_codes (user_id, code, expired_at) 
-		values (:user_id, :code, :expired_at) returning id`,
+		values (:user_id, :code, :expired_at) returning id, created_at, is_valid`,
 		reset,
 	)
 	if err != nil {
@@ -55,7 +55,7 @@ func (r *ResetPasswordRepository) SaveTx(ctx context.Context, tx *sqlx.Tx, reset
 		ctx,
 		query,
 		args...,
-	).Scan(&reset.Id); err != nil {
+	).Scan(&reset.Id, &reset.CreatedAt, &reset.IsValid); err != nil {
 		return err
 	}
 

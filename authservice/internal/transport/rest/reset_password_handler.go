@@ -16,6 +16,7 @@ import (
 
 type ResetPasswordHandler struct {
 	log     *logrus.Entry
+	us      *services.UserService
 	ms      *services.MailService
 	rp      *services.ResetPasswordService
 	ls      *localizer.LocalizeService
@@ -24,6 +25,7 @@ type ResetPasswordHandler struct {
 
 func NewResetPasswordHandler(
 	log *logrus.Entry,
+	us *services.UserService,
 	ms *services.MailService,
 	rp *services.ResetPasswordService,
 	ls *localizer.LocalizeService,
@@ -35,15 +37,66 @@ func NewResetPasswordHandler(
 		rp:      rp,
 		ls:      ls,
 		appInfo: appInfo,
+		us:      us,
 	}
 }
 
 func (h *ResetPasswordHandler) SendCode(c *gin.Context) {
 	var resPassDto dto.ResetPassword
 
+	lang := c.GetHeader("Accept-Language")
+
 	if msg, ok := validate.IsValidBody(c, &resPassDto, h.ls); !ok {
 		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, commonDto.Message{
 			Message: msg,
 		})
+		return
 	}
+
+	user, ok := h.us.GetByEmail(resPassDto.Email)
+	if !ok {
+		msg := h.ls.GetMessage(
+			localizer.UserNotFoundByEmail,
+			lang,
+			"User not found",
+			map[string]interface{}{
+				"email": resPassDto.Email,
+			},
+		)
+		responseutil.ErrorResponse(c, http.StatusNotFound, errormsg.NotFound, commonDto.Message{
+			Message: msg,
+		})
+		return
+	}
+
+	code, err := h.rp.GenerateAndSaveCode(user.Id.Int64)
+	if err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	subject := h.ls.GetMessage(
+		localizer.ResetPasswordSubject,
+		lang,
+		"Reset password",
+		map[string]interface{}{
+			"appName": h.appInfo.AppName,
+		})
+
+	letter := h.ls.GetMessage(
+		localizer.ResetPasswordEmail,
+		lang,
+		"Enter code: "+code.Code,
+		map[string]interface{}{
+			"appName":        h.appInfo.AppName,
+			"appSupportLink": h.appInfo.SupportLink,
+			"code":           code.Code,
+		})
+
+	if err := h.ms.SendMailFromApp(subject, letter, resPassDto.Email); err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, nil)
 }

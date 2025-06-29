@@ -14,4 +14,7 @@ const (
 	AccountBanForever       = "AccountBanForever"
 	EmailConfirm            = "EmailConfirm"
 	Forbidden               = "Forbidden"
+	UserNotFoundByEmail     = "UserNotFoundByEmail"
+	ResetPasswordEmail      = "ResetPasswordEmail"
+	ResetPasswordSubject    = "ResetPasswordSubject"
 )

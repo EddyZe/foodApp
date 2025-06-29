@@ -5,6 +5,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/config"
 	"github.com/EddyZe/foodApp/authservice/internal/domain/entity"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
+	"github.com/EddyZe/foodApp/authservice/internal/util/codegen"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -54,4 +55,18 @@ func (s *ResetPasswordService) DeleteByCode(code string) error {
 		return errors.New(errormsg.NotFound)
 	}
 	return nil
+}
+
+func (s *ResetPasswordService) GenerateAndSaveCode(userId int64) (*entity.ResetPasswordCode, error) {
+	for {
+		codeString := codegen.GenerateRandomCode(6)
+		code, err := s.Save(userId, codeString)
+		if err != nil {
+			if err.Error() == errormsg.IsExists {
+				continue
+			}
+			return nil, err
+		}
+		return code, nil
+	}
 }
