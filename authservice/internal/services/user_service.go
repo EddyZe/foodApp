@@ -172,6 +172,31 @@ func (s *UserService) SetEmailConfirmed(userId int64, b bool) (*entity.User, err
 	return updateUser, nil
 }
 
+func (s *UserService) EditPassword(userId int64, newPassword string) error {
+	currentUser, err := s.GetById(userId)
+	if err != nil {
+		s.log.Errorf("ошибка при изменении пароля пользователя: %v", err)
+		return errors.New(errormsg.NotFound)
+	}
+
+	s.removeCache(currentUser)
+
+	newPasswordHash, err := passencoder.PasswordHash(newPassword)
+	if err != nil {
+		s.log.Errorf("ошибка при генерации хеша пароля: %v", err)
+		return err
+	}
+
+	currentUser.Password = newPasswordHash
+
+	if err := s.ur.EditPassword(userId, newPasswordHash); err != nil {
+		s.log.Errorf("ошибка при обновлении пароля: %v", err)
+		return err
+	}
+	s.updateCache(currentUser)
+	return nil
+}
+
 func (s *UserService) updateCache(u *entity.User) {
 	rediskey2 := redisutil.GenerateKey(redis.UserEmailKeys, u.Email)
 	redisKey := redisutil.GenerateKey(redis.UserIdKeys, fmt.Sprint(u.Id.Int64))

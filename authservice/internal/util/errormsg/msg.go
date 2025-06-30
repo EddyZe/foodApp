@@ -11,4 +11,5 @@ const (
 	InvalidBody            = "INVALID_BODY"
 	InvalidEmailCode       = "INVALID_EMAIL_CODE"
 	EmailIsConfirmed       = "EMAIL_IS_CONFIRMED"
+	CodeExpired            = "CODE_EXPIRED"
 )

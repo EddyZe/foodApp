@@ -314,4 +314,10 @@ other = """
 """
 
 [ResetPasswordSubject]
-other = "Password reset {{.appName}}"
+other = "Сброс пароля {{.appName}}"
+
+[InvalidResetPasswordCode]
+other = "Неверный код для сброса пароля."
+
+[CodeExpired]
+other = "Время действия кода истекло"

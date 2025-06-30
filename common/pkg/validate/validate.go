@@ -4,6 +4,8 @@ import (
 	"fmt"
 	localizer2 "github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/go-playground/validator/v10"
+	"regexp"
+	"strings"
 )
 
 func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.LocalizeService, lang string) string {
@@ -14,9 +16,9 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.Lo
 			msg := ls.GetMessage(
 				localizer2.FieldRequired,
 				lang,
-				fmt.Sprintf("Field %s required", fieldError.Field()),
+				fmt.Sprintf("Field %s required", camelToSnake(fieldError.Field())),
 				map[string]interface{}{
-					"field": fieldError.Field(),
+					"field": camelToSnake(fieldError.Field()),
 				},
 			)
 
@@ -25,9 +27,9 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.Lo
 			msg := ls.GetMessage(
 				localizer2.FieldEmail,
 				lang,
-				fmt.Sprintf("Invalid email in field %s", fieldError.Field()),
+				fmt.Sprintf("Invalid email in field %s", camelToSnake(fieldError.Field())),
 				map[string]interface{}{
-					"field": fieldError.Field(),
+					"field": camelToSnake(fieldError.Field()),
 				},
 			)
 
@@ -36,9 +38,9 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.Lo
 			msg := ls.GetMessage(
 				localizer2.FieldMin,
 				lang,
-				fmt.Sprintf("Field %s must be at least %s characters long", fieldError.Field(), fieldError.Param()),
+				fmt.Sprintf("Field %s must be at least %s characters long", camelToSnake(fieldError.Field()), fieldError.Param()),
 				map[string]interface{}{
-					"field": fieldError.Field(),
+					"field": camelToSnake(fieldError.Field()),
 					"param": fieldError.Param(),
 				},
 			)
@@ -48,9 +50,9 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.Lo
 			msg := ls.GetMessage(
 				localizer2.FieldDefault,
 				lang,
-				fmt.Sprintf("An error in the field %s. Rule: %s", fieldError.Field(), fieldError.Tag()),
+				fmt.Sprintf("An error in the field %s. Rule: %s", camelToSnake(fieldError.Field()), fieldError.Tag()),
 				map[string]interface{}{
-					"field": fieldError.Field(),
+					"field": camelToSnake(fieldError.Field()),
 					"rule":  fieldError.Tag(),
 				},
 			)
@@ -66,4 +68,11 @@ func ValidateBody(validationErrors validator.ValidationErrors, ls *localizer2.Lo
 		lenMsg -= 1
 	}
 	return errorMessages[:lenMsg]
+}
+
+func camelToSnake(s string) string {
+	// Добавим подчеркивание перед каждой заглавной буквой (кроме первой)
+	re := regexp.MustCompile("([a-z0-9])([A-Z])")
+	snake := re.ReplaceAllString(s, "${1}_${2}")
+	return strings.ToLower(snake)
 }

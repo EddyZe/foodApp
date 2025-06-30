@@ -61,6 +61,7 @@ func New(
 	apiV1.GET("/confirm-email-url", emailVerificationHandler.ConfirmEmailByUrl)
 
 	apiV1.POST("/reset-password-code", resetPasswordHandler.SendCode)
+	apiV1.PATCH("/edit-password", resetPasswordHandler.EditPassword)
 
 	logger.Infoln("Auth service starting. Port: ", port)
 	return s

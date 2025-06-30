@@ -34,3 +34,8 @@ type UnBanUser struct {
 type ResetPassword struct {
 	Email string `json:"email" binding:"required,email"`
 }
+
+type EnterCodeResetPassword struct {
+	Code        string `json:"code" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
+}

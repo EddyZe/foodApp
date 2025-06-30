@@ -100,3 +100,56 @@ func (h *ResetPasswordHandler) SendCode(c *gin.Context) {
 
 	responseutil.SuccessResponse(c, http.StatusOK, nil)
 }
+
+func (h *ResetPasswordHandler) EditPassword(c *gin.Context) {
+	var enterCode dto.EnterCodeResetPassword
+
+	if msg, ok := validate.IsValidBody(c, &enterCode, h.ls); !ok {
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, commonDto.Message{
+			Message: msg,
+		})
+		return
+	}
+
+	lang := c.GetHeader("Accept-Language")
+
+	code, err := h.rp.GetCode(enterCode.Code)
+	if err != nil {
+		msg := h.ls.GetMessage(
+			localizer.InvalidResetPasswordCode,
+			lang,
+			"Invalid code",
+			nil,
+		)
+		responseutil.ErrorResponse(c, http.StatusNotFound, errormsg.NotFound, commonDto.Message{
+			Message: msg,
+		})
+		return
+	}
+
+	if code.IsExpired() || !code.IsValid {
+		msg := h.ls.GetMessage(
+			localizer.CodeExpired,
+			lang,
+			"Code expired",
+			nil,
+		)
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.CodeExpired, commonDto.Message{
+			Message: msg,
+		})
+		return
+	}
+
+	code.IsValid = false
+	if err := h.rp.SetIsValid(code.Code, false); err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	if err := h.us.EditPassword(code.UserId, enterCode.NewPassword); err != nil {
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		return
+	}
+
+	responseutil.SuccessResponse(c, http.StatusOK, nil)
+}

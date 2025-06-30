@@ -313,3 +313,10 @@ other = """
 
 [ResetPasswordSubject]
 other = "Password reset {{.appName}}"
+
+
+[InvalidResetPasswordCode]
+other = "Inappropriate code for collecting password"
+
+[CodeExpired]
+other = "The code has expired"

@@ -57,6 +57,15 @@ func (s *ResetPasswordService) DeleteByCode(code string) error {
 	return nil
 }
 
+func (s *ResetPasswordService) GetCode(code string) (*entity.ResetPasswordCode, error) {
+	resetCode, err := s.repo.FindByCode(code)
+	if err != nil {
+		s.log.Error("ошибка при поиске кода: ", err)
+		return nil, errors.New(errormsg.NotFound)
+	}
+	return resetCode, nil
+}
+
 func (s *ResetPasswordService) GenerateAndSaveCode(userId int64) (*entity.ResetPasswordCode, error) {
 	for {
 		codeString := codegen.GenerateRandomCode(6)
