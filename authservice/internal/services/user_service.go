@@ -23,6 +23,7 @@ type UserService struct {
 	redis *redis.Redis
 	rs    *RoleService
 	ur    *repositories.UserRepository
+	hps   *HistoryPasswordService
 }
 
 func NewUserService(
@@ -30,12 +31,14 @@ func NewUserService(
 	redis *redis.Redis,
 	rs *RoleService,
 	ur *repositories.UserRepository,
+	hps *HistoryPasswordService,
 ) *UserService {
 	return &UserService{
 		log:   log,
 		redis: redis,
 		rs:    rs,
 		ur:    ur,
+		hps:   hps,
 	}
 }
 
@@ -181,6 +184,14 @@ func (s *UserService) EditPassword(userId int64, newPassword string) error {
 
 	s.removeCache(currentUser)
 
+	currentPassword := currentUser.Password
+	lastPassword := s.hps.GetLastPassword(userId)
+
+	if passencoder.CheckEqualsPassword(newPassword, currentPassword) || passencoder.CheckEqualsPassword(newPassword, lastPassword.OldPassword) {
+		s.log.Debug("Пароль равен текущему или последнему изменненному")
+		return errors.New(errormsg.LastPasswordIsExists)
+	}
+
 	newPasswordHash, err := passencoder.PasswordHash(newPassword)
 	if err != nil {
 		s.log.Errorf("ошибка при генерации хеша пароля: %v", err)
@@ -188,6 +199,10 @@ func (s *UserService) EditPassword(userId int64, newPassword string) error {
 	}
 
 	currentUser.Password = newPasswordHash
+
+	if err := s.hps.Save(userId, currentPassword); err != nil {
+		s.log.Error("ошибка при сохранеии текущего пароля в истории: ", err)
+	}
 
 	if err := s.ur.EditPassword(userId, newPasswordHash); err != nil {
 		s.log.Errorf("ошибка при обновлении пароля: %v", err)

@@ -140,14 +140,26 @@ func (h *ResetPasswordHandler) EditPassword(c *gin.Context) {
 		return
 	}
 
-	code.IsValid = false
-	if err := h.rp.SetIsValid(code.Code, false); err != nil {
+	if err := h.us.EditPassword(code.UserId, enterCode.NewPassword); err != nil {
+		if err.Error() == errormsg.LastPasswordIsExists {
+			msg := h.ls.GetMessage(
+				localizer.LastPasswords,
+				lang,
+				"The new password should not be equal to the last two",
+				nil,
+			)
+			responseutil.ErrorResponse(c, http.StatusBadRequest, err.Error(), commonDto.Message{
+				Message: msg,
+			})
+			return
+		}
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
 		return
 	}
 
-	if err := h.us.EditPassword(code.UserId, enterCode.NewPassword); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+	code.IsValid = false
+	if err := h.rp.SetIsValid(code.Code, false); err != nil {
+		h.log.Error("ошибка при обнавлении статуса кода: ", err)
 		return
 	}
 

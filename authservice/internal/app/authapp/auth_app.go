@@ -25,16 +25,19 @@ func MustRun(logger *logrus.Entry, appConf *config.AppConfig) {
 	trr := repositories.NewRefreshTokenRepository(psql)
 	evr := repositories.NewEmailVerificationCodeRepository(psql)
 	evtr := repositories.NewEmailVerificationTokenRepository(psql)
+	hpr := repositories.NewPasswordHistoryRepository(psql)
 	rpr := repositories.NewResetPasswordRepository(psql)
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
 	rs := services.NewRoleService(logger, red, rr, urr)
+	hps := services.NewHistoryPasswordService(logger, hpr)
 	us := services.NewUserService(
 		logger,
 		red,
 		rs,
 		ur,
+		hps,
 	)
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
 	bs := services.NewBanService(logger, br, ts)

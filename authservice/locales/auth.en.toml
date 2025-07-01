@@ -320,3 +320,6 @@ other = "Inappropriate code for collecting password"
 
 [CodeExpired]
 other = "The code has expired"
+
+[LastPasswords]
+other = "The new password should not be equal to the last two"

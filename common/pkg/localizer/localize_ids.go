@@ -19,4 +19,5 @@ const (
 	ResetPasswordSubject     = "ResetPasswordSubject"
 	InvalidResetPasswordCode = "InvalidResetPasswordCode"
 	CodeExpired              = "CodeExpired"
+	LastPasswords            = "LastPasswords"
 )
