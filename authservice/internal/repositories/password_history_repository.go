@@ -45,7 +45,7 @@ func (r *PasswordHistoryRepository) GetLastPasswords(userId int64, limit int) []
 
 	res := make([]entity.PasswordHistory, 0)
 
-	if err := r.GetContext(
+	if err := r.SelectContext(
 		ctx,
 		&res,
 		`select * from auth.password_history where user_id = $1 order by changed_at desc limit $2`,
