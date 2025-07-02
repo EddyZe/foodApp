@@ -35,7 +35,7 @@ func (s *HistoryPasswordService) GetLastPasswords(userId int64, limit int) []ent
 
 func (s *HistoryPasswordService) GetLastPassword(userId int64) *entity.PasswordHistory {
 	s.log.Debug("Поиск последнего старого пароля пользователя с ID: ", userId)
-	passwords := s.GetLastPasswords(userId, 0)
+	passwords := s.GetLastPasswords(userId, 1)
 	if len(passwords) == 0 {
 		s.log.Debug("Нет старых паролей")
 		return &entity.PasswordHistory{}
