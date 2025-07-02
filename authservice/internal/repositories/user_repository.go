@@ -155,6 +155,23 @@ func (r *UserRepository) SetEmailIsConfirm(userId int64, b bool) (*entity.User, 
 	return &user, nil
 }
 
+func (r *UserRepository) EditPassword(userId int64, newPassword string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := r.QueryRowxContext(
+		ctx,
+		`update auth.users set password = $1 where id = $2`,
+		newPassword,
+		userId,
+	).Err(); err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (r *UserRepository) CreateTx() (*sqlx.Tx, error) {
 	return createTx(r.DB)
 }

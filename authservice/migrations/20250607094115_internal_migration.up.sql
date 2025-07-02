@@ -64,9 +64,9 @@ create table if not exists auth.reset_password_codes
 (
     id         bigserial primary key,
     user_id    bigint references auth.users (id) on delete cascade,
-    code       varchar(256) not null,
+    code       varchar(256) not null unique ,
     is_valid   bool         not null default true,
-    create_at  timestamp    not null default now(),
+    created_at  timestamp    not null default now(),
     expired_at timestamp    not null
 );
 

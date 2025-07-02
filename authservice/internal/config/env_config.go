@@ -75,7 +75,7 @@ type LocalizerConfig struct {
 }
 
 type EmailVerificationCfg struct {
-	CodeExpiredMinute int `env:"EMAIL_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"15"`
+	CodeExpiredMinute int `env:"EMAIL_VERIFICATION_CODE_EXPIRED_MINUTE" envDefault:"10"`
 }
 
 type ResetPasswordVerificationCfg struct {

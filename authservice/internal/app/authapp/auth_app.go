@@ -25,26 +25,31 @@ func MustRun(logger *logrus.Entry, appConf *config.AppConfig) {
 	trr := repositories.NewRefreshTokenRepository(psql)
 	evr := repositories.NewEmailVerificationCodeRepository(psql)
 	evtr := repositories.NewEmailVerificationTokenRepository(psql)
+	hpr := repositories.NewPasswordHistoryRepository(psql)
+	rpr := repositories.NewResetPasswordRepository(psql)
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
 	rs := services.NewRoleService(logger, red, rr, urr)
+	hps := services.NewHistoryPasswordService(logger, hpr)
 	us := services.NewUserService(
 		logger,
 		red,
 		rs,
 		ur,
+		hps,
 	)
 	ts := services.NewTokenService(appConf.Tokens, red, trr, logger, ar)
 	bs := services.NewBanService(logger, br, ts)
 	ms := services.NewMailService(logger, appConf.SmptConfig)
 	mvs := services.NewEmailVerificationCodeService(logger, appConf.EmailVerification, evr, evtr)
 	lms := localizer.NewLocalizeService(logger, appConf.LocalizerConfig.DirFiles)
+	rps := services.NewResetPasswordService(logger, appConf.ResetPassword, rpr)
 	logger.Infoln("Создане сервисов завершено")
 
 	//Запуск сервера
 	logger.Infoln("Запуск сервера")
-	serv := server.New(logger, us, ts, rs, bs, ms, mvs, lms, appConf.AppInfo)
+	serv := server.New(logger, us, ts, rs, bs, ms, mvs, lms, rps, appConf.AppInfo)
 	if err := serv.ListenAndServe(); err != nil {
 		panic(err)
 	}

@@ -178,3 +178,148 @@ other = "Email is confirmed"
 
 [Forbidden]
 other = "Not enough right"
+
+[UserNotFoundByEmail]
+other = "User with such an email was not found. Email: {{.email}}"
+
+[ResetPasswordEmail]
+other = """
+<html>
+  <head>
+    <style>
+      /* Reset default styles */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        background-color: #f4f6f9;
+        padding: 40px 20px;
+        color: #333333;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        background: linear-gradient(135deg, #1a73e8, #4c8bf5);
+        color: #ffffff;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 500;
+      }
+
+      .content {
+        padding: 30px 20px;
+      }
+
+      .content p {
+        margin-bottom: 15px;
+        font-size: 16px;
+      }
+
+      .code {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1a73e8;
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        margin: 20px 0;
+        letter-spacing: 2px;
+      }
+
+      ol {
+        margin: 15px 0 20px 20px;
+        font-size: 16px;
+      }
+
+      ol li {
+        margin-bottom: 10px;
+      }
+
+      .footer {
+        background-color: #f8f9fa;
+        padding: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #666666;
+      }
+
+      .footer a {
+        color: #1a73e8;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 600px) {
+        .container {
+          margin: 0 10px;
+        }
+
+        .content {
+          padding: 20px 15px;
+        }
+
+        .code {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Password Reset for {{.appName}}</h1>
+      </div>
+      <div class="content">
+        <p><strong>Hello,</strong></p>
+        <p>We received a request to reset your password for <strong>{{.appName}}</strong>. Please use the code below to reset your password:</p>
+        <div class="code">{{.code}}</div>
+        <ol>
+          <li>Open <strong>{{.appName}}</strong> on your device.</li>
+          <li>Navigate to the password reset section.</li>
+          <li>Enter the code in the provided field.</li>
+        </ol>
+        <p>The code is valid for 10 minutes. If it expires, you can request a new one in the app.</p>
+        <p>If you did not request a password reset, please ignore this email or contact us at <a href="{{.appSupportLink}}">{{.appSupportLink}}</a>.</p>
+      </div>
+      <div class="footer">
+        <p>Best regards,<br>The <strong>{{.appName}}</strong> Team</p>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+
+[ResetPasswordSubject]
+other = "Password reset {{.appName}}"
+
+
+[InvalidResetPasswordCode]
+other = "Inappropriate code for collecting password"
+
+[CodeExpired]
+other = "The code has expired"
+
+[LastPasswords]
+other = "The new password should not be equal to the last two"
