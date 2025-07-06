@@ -92,15 +92,18 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 
 	refreshToken := h.ts.GenerateUUID()
 
-	if _, _, err := h.ts.SaveRefreshAndAccessToken(user.Id.Int64, token, refreshToken); err != nil {
+	access, refresh, err := h.ts.SaveRefreshAndAccessToken(user.Id.Int64, token, refreshToken)
+	if err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
 	responseutil.SuccessResponse(c, http.StatusCreated, &authDto.TokensDto{
-		AccessToken:  token,
-		RefreshToken: refreshToken,
+		AccessToken:      token,
+		RefreshToken:     refreshToken,
+		ExpiresAt:        access.ExpiredAt,
+		RefreshExpiresAt: refresh.ExpiredAt,
 	})
 }
 
@@ -147,15 +150,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	refreshToken := h.ts.GenerateUUID()
 
-	if _, _, err := h.ts.SaveRefreshAndAccessToken(u.Id.Int64, token, refreshToken); err != nil {
+	accessToken, refreshTok, err := h.ts.SaveRefreshAndAccessToken(u.Id.Int64, token, refreshToken)
+	if err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
-		AccessToken:  token,
-		RefreshToken: refreshToken,
+		AccessToken:      token,
+		RefreshToken:     refreshToken,
+		ExpiresAt:        accessToken.ExpiredAt,
+		RefreshExpiresAt: refreshTok.ExpiredAt,
 	})
 }
 
@@ -208,8 +214,10 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
-		AccessToken:  access.Token,
-		RefreshToken: refreshToken.Token,
+		AccessToken:      access.Token,
+		RefreshToken:     refreshToken.Token,
+		ExpiresAt:        access.ExpiredAt,
+		RefreshExpiresAt: refreshToken.ExpiredAt,
 	})
 }
 

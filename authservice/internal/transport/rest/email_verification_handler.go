@@ -197,15 +197,18 @@ func (h *EmailVerificationHandler) ConfirmEmailByUrl(c *gin.Context) {
 		return
 	}
 	refreshToken := h.ts.GenerateUUID()
-	if _, _, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken); err != nil {
+	access, refresh, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken)
+	if err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
-		AccessToken:  accessTok,
-		RefreshToken: refreshToken,
+		AccessToken:      accessTok,
+		RefreshToken:     refreshToken,
+		ExpiresAt:        access.ExpiredAt,
+		RefreshExpiresAt: refresh.ExpiredAt,
 	})
 }
 
@@ -278,15 +281,18 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 		return
 	}
 	refreshToken := h.ts.GenerateUUID()
-	if _, _, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken); err != nil {
+	access, refresh, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken)
+	if err != nil {
 		h.log.Error(err)
 		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
 	responseutil.SuccessResponse(c, http.StatusOK, &authDto.TokensDto{
-		AccessToken:  accessTok,
-		RefreshToken: refreshToken,
+		AccessToken:      accessTok,
+		RefreshToken:     refreshToken,
+		ExpiresAt:        access.ExpiredAt,
+		RefreshExpiresAt: refresh.ExpiredAt,
 	})
 }
 

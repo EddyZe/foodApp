@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type LoginDto struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
@@ -13,8 +15,10 @@ type RegisterDto struct {
 }
 
 type TokensDto struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken      string    `json:"access_token"`
+	RefreshToken     string    `json:"refresh_token"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
 }
 
 type ConfirmEmail struct {
