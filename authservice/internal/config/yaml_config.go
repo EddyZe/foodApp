@@ -7,15 +7,15 @@ import (
 )
 
 type YamlConfig struct {
-	Env       string     `yaml:"env"`
-	EnvFile   string     `yaml:"envfile" env-default:".env"`
+	Env       string     `yaml:".env"`
+	EnvFile   string     `yaml:"envfile" .env-default:"..env"`
 	LoggerCfg *LoggerCfg `yaml:"logger"`
 }
 type LoggerCfg struct {
-	Level    string `yaml:"level" env-default:"info"`
-	AppEnv   string `yaml:"app-env" env-default:"development"`
-	Service  string `yaml:"service" env-default:"authservice"`
-	FilePath string `yaml:"file-path" env-default:"./logs"`
+	Level    string `yaml:"level" .env-default:"info"`
+	AppEnv   string `yaml:"app-.env" .env-default:"development"`
+	Service  string `yaml:"service" .env-default:"authservice"`
+	FilePath string `yaml:"file-path" .env-default:"./logs"`
 }
 
 func MustLoad() *YamlConfig {

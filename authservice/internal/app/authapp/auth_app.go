@@ -4,6 +4,7 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/app/storage"
 	"github.com/EddyZe/foodApp/authservice/internal/config"
 	"github.com/EddyZe/foodApp/authservice/internal/repositories"
+	"github.com/EddyZe/foodApp/authservice/internal/schedulers/dbclearscheduler"
 	"github.com/EddyZe/foodApp/authservice/internal/server"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/common/pkg/localizer"
@@ -27,6 +28,7 @@ func MustRun(logger *logrus.Entry, appConf *config.AppConfig) {
 	evtr := repositories.NewEmailVerificationTokenRepository(psql)
 	hpr := repositories.NewPasswordHistoryRepository(psql)
 	rpr := repositories.NewResetPasswordRepository(psql)
+	cr := repositories.NewClearDBRepository(psql)
 	logger.Infoln("Репозитории созданы")
 
 	logger.Infoln("Созание сервисов")
@@ -45,7 +47,15 @@ func MustRun(logger *logrus.Entry, appConf *config.AppConfig) {
 	mvs := services.NewEmailVerificationCodeService(logger, appConf.EmailVerification, evr, evtr)
 	lms := localizer.NewLocalizeService(logger, appConf.LocalizerConfig.DirFiles)
 	rps := services.NewResetPasswordService(logger, appConf.ResetPassword, rpr)
+	cs := services.NewCleanDBService(logger, cr)
 	logger.Infoln("Создане сервисов завершено")
+
+	logger.Infoln("Создание шедулеров")
+	cleanScheduler := dbclearscheduler.NewCleanDBScheduler(logger, cs)
+	if err := cleanScheduler.Start(); err != nil {
+		logger.Error("Ошибка запуска шедулера по очистке базы: ", err)
+		panic(err)
+	}
 
 	//Запуск сервера
 	logger.Infoln("Запуск сервера")

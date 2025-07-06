@@ -138,6 +138,7 @@ create index on auth.audit_log (created_at);
 create index on auth.access_token(token);
 create index on auth.access_token(expired_at);
 create index on auth.email_verification_token(token);
+create index on auth.users_ban(expired_at);
 
 insert into auth.role(name, description)
 VALUES ('user', 'Роль обычного пользователя');
@@ -157,7 +158,6 @@ begin
                      where expired_at < NOW()
                      limit 1000);
         exit when not found;
-        commit;
         perform pg_sleep(0.1);
     end loop;
 
@@ -169,7 +169,6 @@ begin
                         where expired_at < now()
                         limit 1000);
         exit when not found;
-        commit ;
     end loop;
 
     loop
@@ -180,7 +179,6 @@ begin
                         where expired_at < NOW()
                         limit 1000);
         exit when not found;
-        commit;
         perform pg_sleep(0.1);
     end loop;
 
@@ -192,7 +190,6 @@ begin
                      where expired_at < NOW()
                      limit 1000);
         exit when not found;
-        commit;
         perform pg_sleep(0.1);
     end loop;
 
@@ -204,7 +201,6 @@ begin
                      where expired_at < NOW()
                      limit 1000);
         exit when not found;
-        commit;
         perform pg_sleep(0.1);
     end loop;
 
@@ -216,7 +212,6 @@ begin
                      where expired_at < NOW()
                      limit 1000);
         exit when not found;
-        commit;
         perform pg_sleep(0.1);
     end loop;
 end;

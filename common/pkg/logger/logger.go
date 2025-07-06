@@ -69,6 +69,6 @@ func Init(appenv, service, logLevel, filepath string) *logrus.Entry {
 		"service":    service,
 		"go_version": runtime.Version(),
 		"deployment": deploementId,
-		"env":        appenv,
+		".env":       appenv,
 	})
 }

@@ -199,6 +199,7 @@ func (s *UserService) EditPassword(userId int64, newPassword string) error {
 	}
 
 	currentUser.Password = newPasswordHash
+	currentUser.UpdatedAt = time.Now()
 
 	if err := s.hps.Save(userId, currentPassword); err != nil {
 		s.log.Error("ошибка при сохранеии текущего пароля в истории: ", err)
