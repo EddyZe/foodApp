@@ -16,7 +16,14 @@ func IsAdmin(locliz *localizer.LocalizeService) gin.HandlerFunc {
 		}
 		claims, ok := c.Get("claims")
 		if !ok {
-			responseutil.ErrorResponse(c, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+			msg := locliz.GetMessage(
+				localizer.Unauthorized,
+				lang,
+				"You are not authorized",
+				nil,
+			)
+
+			responseutil.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", msg)
 			c.Abort()
 			return
 		}
@@ -39,7 +46,7 @@ func IsAdmin(locliz *localizer.LocalizeService) gin.HandlerFunc {
 			nil,
 		)
 
-		responseutil.ErrorResponse(c, http.StatusForbidden, errMsg)
+		responseutil.ErrorResponse(c, http.StatusForbidden, "FORBIDDEN", errMsg)
 		c.Abort()
 	}
 }

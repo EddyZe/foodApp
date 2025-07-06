@@ -13,4 +13,5 @@ const (
 	InvalidEmailCode       = "INVALID_EMAIL_CODE"
 	EmailIsConfirmed       = "EMAIL_IS_CONFIRMED"
 	CodeExpired            = "CODE_EXPIRED"
+	UserIsBlockedExists    = "USER_IS_BLOCKED"
 )

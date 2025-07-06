@@ -7,7 +7,6 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
 	"github.com/EddyZe/foodApp/authservice/internal/util/passencoder"
 	"github.com/EddyZe/foodApp/authservice/internal/util/stringutils"
-	"github.com/EddyZe/foodApp/common/domain/dto"
 	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
 	"github.com/EddyZe/foodApp/common/pkg/localizer"
@@ -55,19 +54,26 @@ func (h *AuthHandler) Ping(c *gin.Context) {
 // Registry регистрация пользователя
 func (h *AuthHandler) Registry(c *gin.Context) {
 	var registerDto authDto.RegisterDto
+	lang := c.GetHeader("Accept-Language")
 
 	if msg, ok := validate.IsValidBody(c, &registerDto, h.lms); !ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, msg)
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
 		return
 	}
 
 	user, err := h.us.CreateUser(&registerDto)
 	if err != nil {
 		if err.Error() == errormsg.IsExists {
-			responseutil.ErrorResponse(c, http.StatusBadRequest, err.Error())
+			msg := h.lms.GetMessage(
+				localizer.UserIsExists,
+				lang,
+				"The user already exists",
+				nil,
+			)
+			responseutil.ErrorResponse(c, http.StatusBadRequest, err.Error(), msg)
 		} else {
 			h.log.Error(err)
-			responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+			responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		}
 
 		return
@@ -88,7 +94,7 @@ func (h *AuthHandler) Registry(c *gin.Context) {
 
 	if _, _, err := h.ts.SaveRefreshAndAccessToken(user.Id.Int64, token, refreshToken); err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
@@ -104,17 +110,24 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	lang := c.GetHeader("Accept-Language")
 
 	if msg, ok := validate.IsValidBody(c, &loginDto, h.lms); !ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, msg)
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
 		return
 	}
 
 	u, ok := h.us.GetByEmail(loginDto.Email)
 
 	if !ok || !passencoder.CheckEqualsPassword(loginDto.Password, u.Password) {
+		msg := h.lms.GetMessage(
+			localizer.InvalidEmailOrPassword,
+			lang,
+			"Invalid email or password",
+			nil,
+		)
 		responseutil.ErrorResponse(
 			c,
 			http.StatusBadRequest,
 			errormsg.InvalidEmailOrPassword,
+			msg,
 		)
 		return
 	}
@@ -128,7 +141,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, err := h.ts.GenerateJwtByUser(u, userRoles)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
@@ -136,7 +149,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if _, _, err := h.ts.SaveRefreshAndAccessToken(u.Id.Int64, token, refreshToken); err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
@@ -151,7 +164,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	lang := c.GetHeader("Accept-Language")
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
@@ -159,19 +172,19 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	token = strings.TrimSpace(token)
 
 	if token == "" {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	if !h.ts.ValidateRefreshToken(token) {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	u, err := h.us.GetByRefreshToken(token)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
@@ -190,7 +203,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}))
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
@@ -202,14 +215,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 // Logout удаляет токены
 func (h *AuthHandler) Logout(c *gin.Context) {
+	lang := c.GetHeader("Accept-Language")
 	token, ok := jwtutil.ExtractBearerTokenHeader(c)
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	if err := h.ts.Logout(token); err != nil {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
@@ -219,22 +233,23 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // LogoutAll удаляет все токены пользователя
 func (h *AuthHandler) LogoutAll(c *gin.Context) {
 
+	lang := c.GetHeader("Accept-Language")
 	claims, ok := c.Get("claims")
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	claimsMap, ok := claims.(*models.JwtClaims)
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 	}
 
 	userId := claimsMap.Sub
 
 	if err := h.ts.LogoutAll(userId); err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
@@ -256,12 +271,12 @@ func (h *AuthHandler) banResponse(c *gin.Context, ban *entity.Ban, lang string) 
 		c,
 		http.StatusForbidden,
 		errormsg.AccountIsBlocked,
-		dto.Message{
-			Message: msg,
-		})
+		msg,
+	)
 }
 
 func (h *AuthHandler) BanUser(c *gin.Context) {
+	lang := c.GetHeader("Accept-Language")
 	var userBan *authDto.BanUser
 
 	if msg, ok := validate.IsValidBody(c, &userBan, h.lms); !ok {
@@ -273,14 +288,20 @@ func (h *AuthHandler) BanUser(c *gin.Context) {
 	}
 
 	if ban, ok := h.isBan(userBan.UserId); ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.UserIsAlreadyBlocked, ban)
+		msg := h.lms.GetMessage(
+			localizer.UserIsBlocked,
+			lang,
+			"User is blocked",
+			nil,
+		)
+		responseutil.ErrorResponse(c, http.StatusConflict, errormsg.UserIsAlreadyBlocked, msg, ban)
 		return
 	}
 
 	if userBan.IsForever {
 		ban, err := h.bs.BanUserForever(userBan.UserId, userBan.Cause)
 		if err != nil {
-			responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+			responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 			return
 		}
 		responseutil.SuccessResponse(c, http.StatusOK, ban)
@@ -291,7 +312,7 @@ func (h *AuthHandler) BanUser(c *gin.Context) {
 
 	ban, err := h.bs.BanUser(userBan.UserId, userBan.Cause, expiredAt)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Error")
 		return
 	}
 
@@ -307,7 +328,7 @@ func (h *AuthHandler) UnBanUser(c *gin.Context) {
 	}
 
 	if !h.bs.UnBanUser(unban.UserId) {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Error")
 		return
 	}
 

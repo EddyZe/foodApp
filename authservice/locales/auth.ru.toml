@@ -324,3 +324,15 @@ other = "Время действия кода истекло"
 
 [LastPasswords]
 other = "Новый пароль не долженбыть таким же как последние 2"
+
+[Unauthorized]
+other = "Вы не авторизованы"
+
+[UserIsExists]
+other = "Такой пользователь уже существует"
+
+[InvalidEmailOrPassword]
+other = "Не верный email или пароль"
+
+[UserIsBlocked]
+other = "Пользователь уже заблокирован"

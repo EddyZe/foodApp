@@ -20,4 +20,8 @@ const (
 	InvalidResetPasswordCode = "InvalidResetPasswordCode"
 	CodeExpired              = "CodeExpired"
 	LastPasswords            = "LastPasswords"
+	Unauthorized             = "Unauthorized"
+	UserIsExists             = "UserIsExists"
+	InvalidEmailOrPassword   = "InvalidEmailOrPassword"
+	UserIsBlocked            = "UserIsBlocked"
 )

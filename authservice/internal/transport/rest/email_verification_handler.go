@@ -6,7 +6,6 @@ import (
 	authDto "github.com/EddyZe/foodApp/authservice/internal/domain/dto"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
-	"github.com/EddyZe/foodApp/common/domain/dto"
 	"github.com/EddyZe/foodApp/common/domain/models"
 	"github.com/EddyZe/foodApp/common/pkg/jwtutil"
 	"github.com/EddyZe/foodApp/common/pkg/localizer"
@@ -56,13 +55,13 @@ func (h *EmailVerificationHandler) SendMailConfirmCode(c *gin.Context) {
 
 	claims, ok := c.Get("claims")
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	claimsMap, ok := claims.(*models.JwtClaims)
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Internal Error")
 		return
 	}
 
@@ -76,23 +75,23 @@ func (h *EmailVerificationHandler) SendMailConfirmCode(c *gin.Context) {
 	u, err := h.us.GetById(userId)
 	if err != nil {
 		if err.Error() == errormsg.NotFound {
-			responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+			responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 			return
 		}
 
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
 	code, err := h.mvs.GenerateAndSaveCode(u.Id.Int64, 8)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
 	urlToken := h.ts.GenerateUUID()
 	if err := h.mvs.SaveVerificationToken(code.Id.Int64, urlToken); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		if err := h.mvs.Delete(code.Code); err != nil {
 			h.log.Error("ошибка удаления сегерированного кода")
 		}
@@ -126,7 +125,7 @@ func (h *EmailVerificationHandler) SendMailConfirmCode(c *gin.Context) {
 		body,
 		u.Email,
 	); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server error")
 		return
 	}
 
@@ -141,7 +140,7 @@ func (h *EmailVerificationHandler) ConfirmEmailByUrl(c *gin.Context) {
 	}
 	tokenString := c.Query("token")
 	if tokenString == "" {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 	codeString := c.Query("code")
@@ -152,14 +151,12 @@ func (h *EmailVerificationHandler) ConfirmEmailByUrl(c *gin.Context) {
 			"Invalid code. Please check the entered code.",
 			nil,
 		)
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, dto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, msg)
 	}
 
 	token, ok := h.mvs.GetToken(tokenString)
 	if !ok || token.IsExpired() || !token.IsActive {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
@@ -177,7 +174,7 @@ func (h *EmailVerificationHandler) ConfirmEmailByUrl(c *gin.Context) {
 	updateUser, err := h.us.SetEmailConfirmed(code.UserId, true)
 	if err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
@@ -196,13 +193,13 @@ func (h *EmailVerificationHandler) ConfirmEmailByUrl(c *gin.Context) {
 	userRoles := h.rs.GetRoleByUserId(updateUser.Id.Int64)
 	accessTok, err := h.ts.GenerateJwtByUser(updateUser, userRoles)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 	refreshToken := h.ts.GenerateUUID()
 	if _, _, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken); err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
@@ -217,19 +214,19 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 	lang := c.GetHeader("Accept-Language")
 	token, ok := jwtutil.ExtractBearerTokenHeader(c)
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	claims, ok := c.Get("claims")
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized)
+		responseutil.ErrorResponse(c, http.StatusUnauthorized, errormsg.Unauthorized, unauthMsg(h.lms, lang))
 		return
 	}
 
 	claimsMap, ok := claims.(*models.JwtClaims)
 	if !ok {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "Server Internal Error")
 		return
 	}
 
@@ -240,9 +237,7 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 
 	var ce authDto.ConfirmEmail
 	if msg, ok := validate.IsValidBody(c, &ce, h.lms); !ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, dto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
 		return
 	}
 
@@ -259,7 +254,7 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 
 	updateUser, err := h.us.SetEmailConfirmed(claimsMap.Sub, true)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
@@ -272,20 +267,20 @@ func (h *EmailVerificationHandler) ConfirmMail(c *gin.Context) {
 	}
 
 	if err := h.ts.Logout(token); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
 	userRoles := h.rs.GetRoleByUserId(updateUser.Id.Int64)
 	accessTok, err := h.ts.GenerateJwtByUser(updateUser, userRoles)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 	refreshToken := h.ts.GenerateUUID()
 	if _, _, err := h.ts.SaveRefreshAndAccessToken(updateUser.Id.Int64, accessTok, refreshToken); err != nil {
 		h.log.Error(err)
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server Internal Error")
 		return
 	}
 
@@ -302,9 +297,7 @@ func (h *EmailVerificationHandler) responseInvalidCode(c *gin.Context, lang stri
 		"Invalid code. Please check the entered code.",
 		nil,
 	)
-	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, dto.Message{
-		Message: msg,
-	})
+	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, msg)
 }
 
 func (h *EmailVerificationHandler) responseExpiredCode(c *gin.Context, lang string) {
@@ -314,9 +307,7 @@ func (h *EmailVerificationHandler) responseExpiredCode(c *gin.Context, lang stri
 		"The code has expired!",
 		nil,
 	)
-	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, dto.Message{
-		Message: msg,
-	})
+	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidEmailCode, msg)
 }
 
 func (h *EmailVerificationHandler) responseEmailConfirmed(c *gin.Context, lang string) {
@@ -326,7 +317,5 @@ func (h *EmailVerificationHandler) responseEmailConfirmed(c *gin.Context, lang s
 		"Email is confirmed",
 		nil,
 	)
-	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.EmailIsConfirmed, &dto.Message{
-		Message: msg,
-	})
+	responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.EmailIsConfirmed, msg)
 }

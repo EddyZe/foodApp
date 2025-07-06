@@ -5,7 +5,6 @@ import (
 	"github.com/EddyZe/foodApp/authservice/internal/domain/dto"
 	"github.com/EddyZe/foodApp/authservice/internal/services"
 	"github.com/EddyZe/foodApp/authservice/internal/util/errormsg"
-	commonDto "github.com/EddyZe/foodApp/common/domain/dto"
 	"github.com/EddyZe/foodApp/common/pkg/localizer"
 	"github.com/EddyZe/foodApp/common/pkg/responseutil"
 	"github.com/EddyZe/foodApp/common/pkg/validate"
@@ -47,9 +46,7 @@ func (h *ResetPasswordHandler) SendCode(c *gin.Context) {
 	lang := c.GetHeader("Accept-Language")
 
 	if msg, ok := validate.IsValidBody(c, &resPassDto, h.ls); !ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, commonDto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
 		return
 	}
 
@@ -63,15 +60,13 @@ func (h *ResetPasswordHandler) SendCode(c *gin.Context) {
 				"email": resPassDto.Email,
 			},
 		)
-		responseutil.ErrorResponse(c, http.StatusNotFound, errormsg.NotFound, commonDto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusNotFound, errormsg.NotFound, msg)
 		return
 	}
 
 	code, err := h.rp.GenerateAndSaveCode(user.Id.Int64)
 	if err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server error")
 		return
 	}
 
@@ -94,7 +89,7 @@ func (h *ResetPasswordHandler) SendCode(c *gin.Context) {
 		})
 
 	if err := h.ms.SendMailFromApp(subject, letter, resPassDto.Email); err != nil {
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server error")
 		return
 	}
 
@@ -105,9 +100,7 @@ func (h *ResetPasswordHandler) EditPassword(c *gin.Context) {
 	var enterCode dto.EnterCodeResetPassword
 
 	if msg, ok := validate.IsValidBody(c, &enterCode, h.ls); !ok {
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, commonDto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.InvalidBody, msg)
 		return
 	}
 
@@ -121,9 +114,7 @@ func (h *ResetPasswordHandler) EditPassword(c *gin.Context) {
 			"Invalid code",
 			nil,
 		)
-		responseutil.ErrorResponse(c, http.StatusNotFound, errormsg.NotFound, commonDto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusNotFound, errormsg.NotFound, msg)
 		return
 	}
 
@@ -134,9 +125,7 @@ func (h *ResetPasswordHandler) EditPassword(c *gin.Context) {
 			"Code expired",
 			nil,
 		)
-		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.CodeExpired, commonDto.Message{
-			Message: msg,
-		})
+		responseutil.ErrorResponse(c, http.StatusBadRequest, errormsg.CodeExpired, msg)
 		return
 	}
 
@@ -148,12 +137,10 @@ func (h *ResetPasswordHandler) EditPassword(c *gin.Context) {
 				"The new password should not be equal to the last two",
 				nil,
 			)
-			responseutil.ErrorResponse(c, http.StatusBadRequest, err.Error(), commonDto.Message{
-				Message: msg,
-			})
+			responseutil.ErrorResponse(c, http.StatusBadRequest, err.Error(), msg)
 			return
 		}
-		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError)
+		responseutil.ErrorResponse(c, http.StatusInternalServerError, errormsg.ServerInternalError, "server error")
 		return
 	}
 

@@ -2,32 +2,30 @@ package responseutil
 
 import (
 	commonDto "github.com/EddyZe/foodApp/common/domain/dto"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 )
 
-func ErrorResponse(c *gin.Context, code int, message string, data ...interface{}) {
+func ErrorResponse(c *gin.Context, status int, code, message string, details ...interface{}) {
 	err := commonDto.APIError{
-		Code:    http.StatusText(code),
+		Code:    code,
 		Message: message,
 	}
 
-	if data != nil || len(data) > 0 {
-		err.Data = data
+	if details != nil || len(details) > 0 {
+		err.Details = details
 	}
 	c.JSON(
-		code,
+		status,
 		commonDto.Response{
-			Success: false,
-			Error:   err,
+			Status: status,
+			Error:  err,
 		},
 	)
 }
 
-func SuccessResponse(c *gin.Context, code int, data interface{}) {
-	c.JSON(code, commonDto.Response{
-		Success: true,
-		Data:    data,
+func SuccessResponse(c *gin.Context, status int, data interface{}) {
+	c.JSON(status, commonDto.Response{
+		Status: status,
+		Data:   data,
 	})
 }

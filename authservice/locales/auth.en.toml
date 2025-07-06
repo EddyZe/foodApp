@@ -314,7 +314,6 @@ other = """
 [ResetPasswordSubject]
 other = "Password reset {{.appName}}"
 
-
 [InvalidResetPasswordCode]
 other = "Inappropriate code for collecting password"
 
@@ -323,3 +322,15 @@ other = "The code has expired"
 
 [LastPasswords]
 other = "The new password should not be equal to the last two"
+
+[Unauthorized]
+other = "You are not authorized"
+
+[UserIsExists]
+other = "The user already exists"
+
+[InvalidEmailOrPassword]
+other = "Invalid email or password"
+
+[UserIsBlocked]
+other = "The user is already blocked"
